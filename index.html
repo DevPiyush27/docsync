@@ -83,7 +83,6 @@
         overflow-x: hidden;
       }
 
-      /* Ambient background grid */
       body::before {
         content: "";
         position: fixed;
@@ -117,7 +116,6 @@
         z-index: 1;
       }
 
-      /* Header */
       .header {
         text-align: center;
         display: flex;
@@ -180,7 +178,6 @@
         line-height: 1.5;
       }
 
-      /* Glass Cards */
       .glass-card {
         background: var(--card-bg);
         backdrop-filter: blur(16px);
@@ -222,7 +219,6 @@
         height: 20px;
       }
 
-      /* Form Elements */
       .form-group {
         display: flex;
         flex-direction: column;
@@ -288,7 +284,6 @@
         transition: color 0.2s;
       }
 
-      /* File Drop Zone */
       .dropzone {
         border: 2px dashed rgba(255, 255, 255, 0.12);
         border-radius: var(--radius-md);
@@ -346,7 +341,6 @@
         color: #fff;
       }
 
-      /* Selected File Preview Box */
       .file-preview {
         display: none;
         align-items: center;
@@ -421,7 +415,6 @@
         background: rgba(239, 68, 68, 0.1);
       }
 
-      /* Upload Progress Bar */
       .progress-container {
         display: none;
         flex-direction: column;
@@ -459,7 +452,6 @@
         font-family: "JetBrains Mono", monospace;
       }
 
-      /* Buttons */
       .btn {
         width: 100%;
         background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
@@ -524,7 +516,6 @@
         }
       }
 
-      /* Toast Notification */
       .toast {
         position: fixed;
         top: 24px;
@@ -562,7 +553,6 @@
         background: rgba(127, 29, 29, 0.95);
       }
 
-      /* Shake Animation for Auth Error */
       .shake {
         animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
       }
@@ -587,7 +577,6 @@
         }
       }
 
-      /* File List Section */
       .file-list {
         display: flex;
         flex-direction: column;
@@ -597,7 +586,6 @@
         padding-right: 4px;
       }
 
-      /* Custom Scrollbar */
       .file-list::-webkit-scrollbar {
         width: 5px;
       }
@@ -705,7 +693,6 @@
         color: rgba(148, 163, 184, 0.3);
       }
 
-      /* Diagnostics / Setup Helper Box */
       .setup-helper-card {
         display: none;
         background: rgba(245, 158, 11, 0.08);
@@ -770,7 +757,6 @@
         color: #fff;
       }
 
-      /* Live Sync Indicator in Download Header */
       .live-pill {
         display: inline-flex;
         align-items: center;
@@ -792,7 +778,6 @@
         animation: pulse 1.5s infinite ease-in-out;
       }
 
-      /* Footer */
       footer {
         text-align: center;
         margin-top: 1rem;
@@ -834,14 +819,12 @@
     </style>
   </head>
   <body>
-    <!-- Toast Notification -->
     <div id="toast" class="toast" role="alert">
       <i id="toastIcon" data-lucide="info"></i>
       <span id="toastMsg">Notification message</span>
     </div>
 
     <div class="container">
-      <!-- Header Section -->
       <header class="header">
         <div class="badge-pill">
           <span class="pulse-dot"></span>
@@ -849,36 +832,40 @@
         </div>
         <h1>DropVault</h1>
         <p>
-          Secure, lightweight file transfer with real-time sync, PIN authentication, and Supabase cloud storage.
+          Secure, lightweight file transfer with real-time sync, PIN
+          authentication, and Supabase cloud storage.
         </p>
       </header>
 
-      <!-- Supabase Setup Diagnostics Card (Shown if bucket is missing or RLS is blocked) -->
       <div id="setupHelperCard" class="setup-helper-card">
         <div class="setup-helper-header">
           <i data-lucide="alert-triangle" style="width: 18px; height: 18px"></i>
-          <span id="setupHelperTitle">Action Required: Setup Supabase Bucket</span>
+          <span id="setupHelperTitle"
+            >Action Required: Setup Supabase Bucket</span
+          >
         </div>
         <div class="setup-helper-content">
           <p id="setupHelperMsg">
-            The bucket <code>oops-assignments</code> was not found or lacks permissions in your Supabase project.
+            The bucket <code>oops-assignments</code> was not found or lacks
+            permissions in your Supabase project.
           </p>
-          <p style="margin-top: 0.4rem;">
-            Run this 1-click script in your <strong>Supabase SQL Editor</strong> to create the bucket and public storage policies:
+          <p style="margin-top: 0.4rem">
+            Run this 1-click script in your
+            <strong>Supabase SQL Editor</strong> to create the bucket and public
+            storage policies:
           </p>
-          <div class="code-snippet-box" id="sqlSnippet">-- 1. Create oops-assignments bucket
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('oops-assignments', 'oops-assignments', true)
-ON CONFLICT (id) DO UPDATE SET public = true;
-
--- 2. Allow anyone to list and download files
-CREATE POLICY "Public Access" ON storage.objects FOR SELECT TO public USING (bucket_id = 'oops-assignments');
-
--- 3. Allow anyone to upload files
-CREATE POLICY "Public Upload" ON storage.objects FOR INSERT TO public WITH CHECK (bucket_id = 'oops-assignments');
-
--- 4. Allow overwrite / updates
-CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (bucket_id = 'oops-assignments');</div>
+          <div class="code-snippet-box" id="sqlSnippet">
+            -- 1. Create oops-assignments bucket INSERT INTO storage.buckets
+            (id, name, public) VALUES ('oops-assignments', 'oops-assignments',
+            true) ON CONFLICT (id) DO UPDATE SET public = true; -- 2. Allow
+            anyone to list and download files CREATE POLICY "Public Access" ON
+            storage.objects FOR SELECT TO public USING (bucket_id =
+            'oops-assignments'); -- 3. Allow anyone to upload files CREATE
+            POLICY "Public Upload" ON storage.objects FOR INSERT TO public WITH
+            CHECK (bucket_id = 'oops-assignments'); -- 4. Allow overwrite /
+            updates CREATE POLICY "Public Update" ON storage.objects FOR UPDATE
+            TO public USING (bucket_id = 'oops-assignments');
+          </div>
           <button type="button" class="btn-copy-sql" id="btnCopySql">
             <i data-lucide="copy" style="width: 14px; height: 14px"></i>
             <span>Copy SQL Script</span>
@@ -886,7 +873,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         </div>
       </div>
 
-      <!-- Upload Card -->
       <main class="glass-card" id="uploadCard">
         <div class="card-title">
           <div class="card-title-left">
@@ -903,7 +889,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           >
         </div>
 
-        <!-- PIN Auth Group -->
         <div class="form-group" id="pinGroup">
           <label for="pinInput">
             <span>Security Passcode (4 Digits)</span>
@@ -929,7 +914,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           </div>
         </div>
 
-        <!-- Drag & Drop Zone -->
         <div class="form-group">
           <label>Select File</label>
           <div class="dropzone" id="dropzone">
@@ -942,7 +926,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
             </div>
           </div>
 
-          <!-- File selected display -->
           <div class="file-preview" id="filePreview">
             <div class="file-info">
               <div class="file-icon-box">
@@ -963,7 +946,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
             </button>
           </div>
 
-          <!-- Upload Progress Bar -->
           <div class="progress-container" id="progressContainer">
             <div class="progress-bar-bg">
               <div class="progress-bar-fill" id="progressBarFill"></div>
@@ -975,22 +957,20 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           </div>
         </div>
 
-        <!-- Upload Action Button -->
         <button type="button" class="btn" id="btnUpload">
           <i data-lucide="arrow-up-circle"></i>
           <span id="btnUploadText">Upload to Vault</span>
         </button>
       </main>
 
-      <!-- Download / File List Card -->
       <section class="glass-card" id="downloadCard">
         <div class="card-title">
           <div class="card-title-left">
             <i data-lucide="folder-down"></i>
             <span>Files Available for Download</span>
           </div>
-          <div style="display: flex; align-items: center; gap: 0.6rem;">
-            <div class="live-pill" id="liveSyncPill" style="display: none;">
+          <div style="display: flex; align-items: center; gap: 0.6rem">
+            <div class="live-pill" id="liveSyncPill" style="display: none">
               <span class="dot"></span> Live Sync
             </div>
             <button
@@ -1003,16 +983,17 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           </div>
         </div>
 
-        <!-- Files Container -->
         <div class="file-list" id="fileListContainer">
           <div class="empty-state" id="initialState">
             <i data-lucide="key-round"></i>
-            <p>Enter 4-digit PIN (<strong>1234</strong>) above to unlock real-time files.</p>
+            <p>
+              Enter 4-digit PIN (<strong>1234</strong>) above to unlock
+              real-time files.
+            </p>
           </div>
         </div>
       </section>
 
-      <!-- Footer -->
       <footer>
         <span
           >&copy; DropVault &bull; Crafted with Supabase & GitHub Pages</span
@@ -1020,22 +1001,14 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
       </footer>
     </div>
 
-    <!-- APPLICATION JAVASCRIPT -->
     <script>
-      /* ==========================================================================
-       CONFIGURATION & CREDENTIALS
-       ========================================================================== */
       const SUPABASE_URL = "https://elpertmpojaecawqzbyu.supabase.co";
       const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVscGVydG1wb2phZWNhd3F6Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1ODI2MjUsImV4cCI6MjEwNDE1ODYyNX0.gXY00sEyAxYXIwo716cJ5cyOxImFMmtYMsJaaJ2axSc";
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVscGVydG1wb2phZWNhd3F6Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1ODI2MjUsImV4cCI6MjEwNDE1ODYyNX0.gXY00sEyAxYXIwo716cJ5cyOxImFMmtYMsJaaJ2axS";
       const BUCKET_NAME = "oops-assignments";
 
-      // Client-side 4-digit security PIN
       const ACCESS_PIN = "1234";
 
-      /* ==========================================================================
-       SUPABASE CLIENT INITIALIZATION
-       ========================================================================== */
       let supabase = null;
       let isUnlocked = false;
       let pollingInterval = null;
@@ -1047,9 +1020,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         );
       }
 
-      /* ==========================================================================
-       DOM ELEMENTS
-       ========================================================================== */
       const pinInput = document.getElementById("pinInput");
       const pinGroup = document.getElementById("pinGroup");
       const pinStatusIcon = document.getElementById("pinStatusIcon");
@@ -1079,12 +1049,8 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
       let selectedFile = null;
       let knownFilesMap = new Map();
 
-      // Initialize Lucide Icons
       lucide.createIcons();
 
-      /* ==========================================================================
-       HELPER UTILITIES
-       ========================================================================== */
       function showToast(message, type = "info") {
         toastMsg.textContent = message;
         toast.className = `toast show ${type}`;
@@ -1145,15 +1111,11 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         return "file";
       }
 
-      /* Copy SQL helper */
       btnCopySql.addEventListener("click", () => {
         navigator.clipboard.writeText(sqlSnippet.textContent);
         showToast("SQL setup script copied to clipboard!", "success");
       });
 
-      /* ==========================================================================
-       PIN VERIFICATION LOGIC
-       ========================================================================== */
       function setUnlockedState(unlocked) {
         isUnlocked = unlocked;
         if (unlocked) {
@@ -1163,7 +1125,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           liveSyncPill.style.display = "inline-flex";
           lucide.createIcons();
 
-          // Start Real-time Auto-Polling every 4 seconds
           if (!pollingInterval) {
             pollingInterval = setInterval(() => {
               if (isUnlocked) fetchFiles(false);
@@ -1199,7 +1160,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         }
       }
 
-      // Auto-check PIN as user types
       pinInput.addEventListener("input", () => {
         if (pinInput.value.length === 4) {
           if (pinInput.value.trim() === ACCESS_PIN) {
@@ -1217,9 +1177,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         }
       });
 
-      /* ==========================================================================
-       FILE SELECTION & DRAG-AND-DROP
-       ========================================================================== */
       function handleFileSelection(file) {
         if (!file) return;
         selectedFile = file;
@@ -1263,9 +1220,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         }
       });
 
-      /* ==========================================================================
-       UPLOAD LOGIC (SUPABASE STORAGE)
-       ========================================================================== */
       btnUpload.addEventListener("click", async () => {
         if (!verifyPIN()) return;
 
@@ -1287,14 +1241,12 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
           progressPercent.textContent = "25%";
           progressStatus.textContent = "Sending to Supabase...";
 
-          // Sanitize filename to prevent special character path failures
           const cleanFileName = selectedFile.name.replace(/[^\w\d.-]/g, "_");
           const filePath = `${cleanFileName}`;
 
           progressBarFill.style.width = "65%";
           progressPercent.textContent = "65%";
 
-          // Upload to Supabase bucket
           const { data, error } = await supabase.storage
             .from(BUCKET_NAME)
             .upload(filePath, selectedFile, {
@@ -1310,37 +1262,51 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
 
           showToast(`"${selectedFile.name}" uploaded successfully!`, "success");
 
-          // Optimistically add to UI immediately
-          renderSingleFile({
-            name: cleanFileName,
-            created_at: new Date().toISOString(),
-            metadata: { size: selectedFile.size },
-          }, true);
+          renderSingleFile(
+            {
+              name: cleanFileName,
+              created_at: new Date().toISOString(),
+              metadata: { size: selectedFile.size },
+            },
+            true,
+          );
 
-          // Reset selection
           selectedFile = null;
           fileInput.value = "";
           filePreview.classList.remove("active");
 
-          // Hide setup helper if active
           setupHelperCard.classList.remove("active");
 
-          // Trigger live refresh
           await fetchFiles(false);
         } catch (err) {
           console.error("Upload Error:", err);
           const msg = err.message || "";
-          
-          if (msg.includes("Bucket not found") || msg.includes("NoSuchBucket")) {
+
+          if (
+            msg.includes("Bucket not found") ||
+            msg.includes("NoSuchBucket")
+          ) {
             setupHelperCard.classList.add("active");
             setupHelperMsg.innerHTML = `Bucket <code>${BUCKET_NAME}</code> does not exist in your Supabase project. Run the SQL script below to create it.`;
-            showToast("Bucket not found in Supabase! See instructions above.", "error");
-          } else if (msg.includes("violates row-level security") || msg.includes("Unauthorized")) {
+            showToast(
+              "Bucket not found in Supabase! See instructions above.",
+              "error",
+            );
+          } else if (
+            msg.includes("violates row-level security") ||
+            msg.includes("Unauthorized")
+          ) {
             setupHelperCard.classList.add("active");
             setupHelperMsg.innerHTML = `Storage Row-Level Security (RLS) blocked the upload. Run the SQL script below to enable public uploads.`;
-            showToast("Upload blocked by Supabase RLS. See instructions above.", "error");
+            showToast(
+              "Upload blocked by Supabase RLS. See instructions above.",
+              "error",
+            );
           } else {
-            showToast(msg || "Upload failed. Check console for details.", "error");
+            showToast(
+              msg || "Upload failed. Check console for details.",
+              "error",
+            );
           }
         } finally {
           btnUpload.disabled = false;
@@ -1353,17 +1319,12 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         }
       });
 
-      /* ==========================================================================
-       DOWNLOAD / REAL-TIME LIST FILES (SUPABASE STORAGE)
-       ========================================================================== */
       function renderSingleFile(file, isNew = false) {
-        // Remove empty state if present
         const emptyState = fileListContainer.querySelector(".empty-state");
         if (emptyState) {
           fileListContainer.innerHTML = "";
         }
 
-        // Check if item already exists in DOM
         const existingEl = document.getElementById(`file-${file.name}`);
         if (existingEl) return;
 
@@ -1373,33 +1334,35 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
 
         const downloadUrl = urlData ? urlData.publicUrl : "#";
         const iconName = getFileIcon(file.name);
-        const fileSize = file.metadata ? formatBytes(file.metadata.size) : "Unknown size";
+        const fileSize = file.metadata
+          ? formatBytes(file.metadata.size)
+          : "Unknown size";
         const createdAt = formatDate(file.created_at);
 
         const fileItem = document.createElement("div");
         fileItem.id = `file-${file.name}`;
         fileItem.className = `file-item ${isNew ? "new-file" : ""}`;
         fileItem.innerHTML = `
-          <div class="file-item-left">
-            <div class="file-icon-box">
-              <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
-            </div>
-            <div style="overflow: hidden;">
-              <div class="file-item-title" title="${file.name}">${file.name}</div>
-              <div class="file-item-meta">
-                <span>${fileSize}</span>
-                <span>&bull;</span>
-                <span>${createdAt}</span>
-              </div>
-            </div>
-          </div>
-          <div class="file-item-actions">
-            <a href="${downloadUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download ${file.name}">
-              <i data-lucide="download" style="width: 14px; height: 14px;"></i>
-              <span>Download</span>
-            </a>
-          </div>
-        `;
+                                <div class="file-item-left">
+                                  <div class="file-icon-box">
+                                    <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
+                                  </div>
+                                  <div style="overflow: hidden;">
+                                    <div class="file-item-title" title="${file.name}">${file.name}</div>
+                                    <div class="file-item-meta">
+                                      <span>${fileSize}</span>
+                                      <span>&bull;</span>
+                                      <span>${createdAt}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div class="file-item-actions">
+                                  <a href="${downloadUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download ${file.name}">
+                                    <i data-lucide="download" style="width: 14px; height: 14px;"></i>
+                                    <span>Download</span>
+                                  </a>
+                                </div>
+                              `;
 
         if (isNew) {
           fileListContainer.prepend(fileItem);
@@ -1434,17 +1397,19 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
 
           if (files.length === 0) {
             fileListContainer.innerHTML = `
-              <div class="empty-state">
-                <i data-lucide="inbox"></i>
-                <p>No files uploaded yet in "<strong>${BUCKET_NAME}</strong>".</p>
-              </div>
-            `;
+                                    <div class="empty-state">
+                                      <i data-lucide="inbox"></i>
+                                      <p>No files uploaded yet in "<strong>${BUCKET_NAME}</strong>".</p>
+                                    </div>
+                                  `;
           } else {
-            // Check if file list has actually changed to avoid re-rendering DOM unnecessarily
             const currentNames = files.map((f) => f.name).join(",");
             const prevNames = Array.from(knownFilesMap.keys()).join(",");
 
-            if (currentNames !== prevNames || fileListContainer.querySelector(".empty-state")) {
+            if (
+              currentNames !== prevNames ||
+              fileListContainer.querySelector(".empty-state")
+            ) {
               fileListContainer.innerHTML = "";
               knownFilesMap.clear();
 
@@ -1457,16 +1422,19 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
         } catch (err) {
           console.error("Fetch Error:", err);
           const msg = err.message || "";
-          if (msg.includes("Bucket not found") || msg.includes("NoSuchBucket")) {
+          if (
+            msg.includes("Bucket not found") ||
+            msg.includes("NoSuchBucket")
+          ) {
             setupHelperCard.classList.add("active");
             setupHelperMsg.innerHTML = `Bucket <code>${BUCKET_NAME}</code> does not exist in your Supabase project. Run the SQL script below to create it.`;
           }
           fileListContainer.innerHTML = `
-            <div class="empty-state">
-              <i data-lucide="shield-alert" style="color: var(--danger);"></i>
-              <p style="color: #fca5a5;">${err.message || "Failed to list files. Check bucket & RLS."}</p>
-            </div>
-          `;
+                                  <div class="empty-state">
+                                    <i data-lucide="shield-alert" style="color: var(--danger);"></i>
+                                    <p style="color: #fca5a5;">${err.message || "Failed to list files. Check bucket & RLS."}</p>
+                                  </div>
+                                `;
         } finally {
           if (showSpin) {
             setTimeout(() => {
@@ -1479,7 +1447,6 @@ CREATE POLICY "Public Update" ON storage.objects FOR UPDATE TO public USING (buc
 
       btnRefresh.addEventListener("click", () => fetchFiles(true));
 
-      // Initial check & auto-fill PIN for fast testing
       window.addEventListener("DOMContentLoaded", () => {
         lucide.createIcons();
         pinInput.value = "1234";
