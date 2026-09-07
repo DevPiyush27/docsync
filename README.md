@@ -16,14 +16,3 @@ A cross-platform document synchronization system connecting a web portal and a n
 ## 📱 Features
 * **Cross-Platform Sync:** Connects a web client and a native Android application.
 * **Modern UI:** Built with Jetpack Compose for a smooth mobile experience.
-* **Releases:** Pre-compiled Android APK available directly under [Releases](https://github.com/DevPiyush27/docsync/releases).
-
----
-
-## 🚀 Getting Started
-
-To explore or run the source code locally:
-
-1. Clone the repository:
-   ```bash
-   git clone [https://github.com/DevPiyush27/docsync.git](https://github.com/DevPiyush27/docsync.git)
