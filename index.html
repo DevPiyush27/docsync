@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 <!doctype html>
 <html lang="en">
   <head>
@@ -1455,4 +1456,216 @@
       });
     </script>
   </body>
+=======
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DocSync — Instant Document Sync (Web to Android)</title>
+    <meta name="description" content="Send documents, videos, and files up to 50MB seamlessly from your web browser to any paired Android device in real-time.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Supabase JS Client v2 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Ambient Background Glows -->
+    <div class="glow-sphere sphere-1"></div>
+    <div class="glow-sphere sphere-2"></div>
+    <div class="glow-sphere sphere-3"></div>
+
+    <div class="app-wrapper">
+        <!-- Top Navigation -->
+        <header class="app-header">
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                        <polyline points="13 2 13 9 20 9"></polyline>
+                        <path d="M9 15h6"></path>
+                        <path d="M12 12v6"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Doc<span>Sync</span></h1>
+                    <span class="badge">Realtime Web-to-Device</span>
+                </div>
+            </div>
+
+            <div class="header-actions">
+                <button id="config-btn" class="icon-btn" title="Configure Supabase Credentials" aria-label="Settings">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"></circle>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                    </svg>
+                    <span>Config</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Card Component -->
+        <main class="main-card">
+            <div class="card-hero">
+                <h2>Transfer Document to Android</h2>
+                <p>Enter the 6-digit sync code displayed on your Android app, pick a file up to 50MB, and hit Send.</p>
+            </div>
+
+            <form id="sync-form" class="sync-form" autocomplete="off">
+                <!-- Step 1: 6-Digit Code Input -->
+                <div class="input-section">
+                    <label for="code-input" class="section-label">
+                        <span class="step-badge">1</span>
+                        <span>Enter 6-Digit Pairing Code</span>
+                    </label>
+                    <div class="code-input-wrapper">
+                        <input 
+                            type="text" 
+                            id="code-input" 
+                            maxlength="6" 
+                            placeholder="000000" 
+                            pattern="\d{6}" 
+                            inputmode="numeric" 
+                            autocomplete="one-time-code" 
+                            required
+                        >
+                        <div class="code-indicator" id="code-status">
+                            <span class="digit-count">0/6 digits</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2: File Upload Zone -->
+                <div class="input-section">
+                    <label class="section-label">
+                        <span class="step-badge">2</span>
+                        <span>Select Document or File (Max 50MB)</span>
+                    </label>
+                    <div class="drop-zone" id="drop-zone">
+                        <input type="file" id="file-input" class="file-input" required>
+                        <div class="drop-zone-content" id="drop-zone-empty">
+                            <div class="drop-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                            </div>
+                            <p class="drop-title">Drag and drop file here, or <span>browse</span></p>
+                            <span class="drop-hint">Supports PDF, DOCX, ZIP, MP4, APK, Images & more (Up to 50 MB)</span>
+                        </div>
+
+                        <!-- Selected File Preview Card -->
+                        <div class="selected-file-preview hidden" id="file-preview">
+                            <div class="file-info-left">
+                                <div class="file-type-icon" id="file-type-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                </div>
+                                <div class="file-details">
+                                    <span class="file-name" id="file-name">filename.pdf</span>
+                                    <span class="file-size" id="file-size">0.00 MB</span>
+                                </div>
+                            </div>
+                            <button type="button" id="remove-file-btn" class="remove-btn" title="Remove file">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                    <line x1="6" y1="6" x2="18" y2="6"></line>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Upload Progress & Status -->
+                <div class="progress-section hidden" id="progress-section">
+                    <div class="progress-header">
+                        <span class="progress-status" id="progress-status">Uploading to Supabase Storage...</span>
+                        <span class="progress-percent" id="progress-percent">0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-bar" id="progress-bar"></div>
+                    </div>
+                </div>
+
+                <!-- Feedback Banner -->
+                <div class="banner hidden" id="status-banner">
+                    <div class="banner-icon" id="banner-icon"></div>
+                    <div class="banner-message" id="banner-message"></div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submit-btn" class="primary-btn">
+                    <span class="btn-text">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="send-icon">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                        Send to Android
+                    </span>
+                    <span class="btn-spinner hidden" id="btn-spinner"></span>
+                </button>
+            </form>
+        </main>
+
+        <!-- Instructions & Features Footer -->
+        <section class="info-grid">
+            <div class="info-card">
+                <div class="info-icon">⚡</div>
+                <h3>Real-Time Pairing</h3>
+                <p>Instant trigger using Supabase Postgres CDC Realtime subscriptions.</p>
+            </div>
+            <div class="info-card">
+                <div class="info-icon">📦</div>
+                <h3>Up to 50MB</h3>
+                <p>Supports large PDFs, APKs, videos, and archives directly to native storage.</p>
+            </div>
+            <div class="info-card">
+                <div class="info-icon">📲</div>
+                <h3>Native Downloads</h3>
+                <p>Android DownloadManager saves files directly to the public Downloads directory.</p>
+            </div>
+        </section>
+    </div>
+
+    <!-- Supabase Configuration Modal -->
+    <div class="modal-overlay hidden" id="config-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Supabase Configuration</h3>
+                <button type="button" id="close-modal-btn" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="modal-desc">Enter your Supabase project credentials. These are stored locally in your browser for instant testing.</p>
+                
+                <div class="form-group">
+                    <label for="cfg-url">Supabase Project URL</label>
+                    <input type="url" id="cfg-url" placeholder="https://your-project-id.supabase.co" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="cfg-key">Supabase Anon Public Key</label>
+                    <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." required>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" id="save-config-btn" class="primary-btn">Save Configuration</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
+    <script src="app.js"></script>
+</body>
+>>>>>>> f6ab07b0b5bb6ddd36a3c5a25af6834c9a209ac7
 </html>
