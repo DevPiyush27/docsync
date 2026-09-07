@@ -1,0 +1,52 @@
+com.documentsync.app-resValues-0 C:\P2P file transfer project\android\app\build\generated\res\resValues\debug
+com.documentsync.app-packageDebugResources-1 C:\P2P file transfer project\android\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.documentsync.app-packageDebugResources-2 C:\P2P file transfer project\android\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.documentsync.app-debug-3 C:\P2P file transfer project\android\app\build\intermediates\merged_res\debug\mergeDebugResources
+com.documentsync.app-debug-4 C:\P2P file transfer project\android\app\src\debug\res
+com.documentsync.app-main-5 C:\P2P file transfer project\android\app\src\main\res
+com.documentsync.app-savedstate-1.2.1-6 C:\Users\piyus\.gradle\caches\8.10.2\transforms\02c06fca325454c332413011b64f26cb\transformed\savedstate-1.2.1\res
+com.documentsync.app-ui-graphics-release-7 C:\Users\piyus\.gradle\caches\8.10.2\transforms\042d39eaa4086aa53bdb6ab95a0c4bda\transformed\ui-graphics-release\res
+com.documentsync.app-material-icons-extended-release-8 C:\Users\piyus\.gradle\caches\8.10.2\transforms\0c3582f1502ac7a455111cc34bbd9bbe\transformed\material-icons-extended-release\res
+com.documentsync.app-ui-tooling-data-release-9 C:\Users\piyus\.gradle\caches\8.10.2\transforms\0d187bb54cb184f95e985b87a98865c4\transformed\ui-tooling-data-release\res
+com.documentsync.app-ui-geometry-release-10 C:\Users\piyus\.gradle\caches\8.10.2\transforms\1809381b75cb49f73426ce7e22f4a42a\transformed\ui-geometry-release\res
+com.documentsync.app-savedstate-ktx-1.2.1-11 C:\Users\piyus\.gradle\caches\8.10.2\transforms\2345b4ae6fc4493529014c43e2652086\transformed\savedstate-ktx-1.2.1\res
+com.documentsync.app-startup-runtime-1.2.0-12 C:\Users\piyus\.gradle\caches\8.10.2\transforms\2828ea2f0a3b3f6ee28df001720e75d0\transformed\startup-runtime-1.2.0\res
+com.documentsync.app-core-runtime-2.2.0-13 C:\Users\piyus\.gradle\caches\8.10.2\transforms\2ccac321ff13ec5a0509e3a04dbb89d6\transformed\core-runtime-2.2.0\res
+com.documentsync.app-core-ktx-1.15.0-14 C:\Users\piyus\.gradle\caches\8.10.2\transforms\33e447aa36b6f3203dabe320a6325583\transformed\core-ktx-1.15.0\res
+com.documentsync.app-ui-test-manifest-1.7.6-15 C:\Users\piyus\.gradle\caches\8.10.2\transforms\3ab317612ffdc84290cd3c6ab9bb84f9\transformed\ui-test-manifest-1.7.6\res
+com.documentsync.app-lifecycle-viewmodel-ktx-2.8.7-16 C:\Users\piyus\.gradle\caches\8.10.2\transforms\3db44fe5ce55b871564e87d31bc96ed7\transformed\lifecycle-viewmodel-ktx-2.8.7\res
+com.documentsync.app-lifecycle-runtime-release-17 C:\Users\piyus\.gradle\caches\8.10.2\transforms\3dc81a1d6c01e55a2ad51c183e58fc27\transformed\lifecycle-runtime-release\res
+com.documentsync.app-ui-tooling-preview-release-18 C:\Users\piyus\.gradle\caches\8.10.2\transforms\4cae49ae2d0753ba3bd5bf3101f506ca\transformed\ui-tooling-preview-release\res
+com.documentsync.app-activity-compose-1.9.3-19 C:\Users\piyus\.gradle\caches\8.10.2\transforms\5a1de149ab935b5fad460e3b2d3e1df2\transformed\activity-compose-1.9.3\res
+com.documentsync.app-runtime-saveable-release-20 C:\Users\piyus\.gradle\caches\8.10.2\transforms\7025ae905f66a11dce591c92dfadad45\transformed\runtime-saveable-release\res
+com.documentsync.app-activity-1.9.3-21 C:\Users\piyus\.gradle\caches\8.10.2\transforms\73f5c2c83e702406460688af1902d085\transformed\activity-1.9.3\res
+com.documentsync.app-annotation-experimental-1.4.1-22 C:\Users\piyus\.gradle\caches\8.10.2\transforms\75d3d6e04f05159b31a588c964713f04\transformed\annotation-experimental-1.4.1\res
+com.documentsync.app-lifecycle-viewmodel-release-23 C:\Users\piyus\.gradle\caches\8.10.2\transforms\914dcf0c3d519febe281d1398e9c6171\transformed\lifecycle-viewmodel-release\res
+com.documentsync.app-lifecycle-viewmodel-compose-release-24 C:\Users\piyus\.gradle\caches\8.10.2\transforms\93d3ed120661a6beacf170c85ecbe8ce\transformed\lifecycle-viewmodel-compose-release\res
+com.documentsync.app-material-icons-core-release-25 C:\Users\piyus\.gradle\caches\8.10.2\transforms\a7fd62e0653954512458d71c1c60c439\transformed\material-icons-core-release\res
+com.documentsync.app-ui-util-release-26 C:\Users\piyus\.gradle\caches\8.10.2\transforms\ab75b08ca4dec6059c165d0ca34d3a1b\transformed\ui-util-release\res
+com.documentsync.app-material-ripple-release-27 C:\Users\piyus\.gradle\caches\8.10.2\transforms\abdaa51b36e0646f33d23916fc17334c\transformed\material-ripple-release\res
+com.documentsync.app-foundation-release-28 C:\Users\piyus\.gradle\caches\8.10.2\transforms\ac41a95b27ad352096f56c940c6db295\transformed\foundation-release\res
+com.documentsync.app-lifecycle-runtime-compose-release-29 C:\Users\piyus\.gradle\caches\8.10.2\transforms\ae911acf758d2ee6065e8f8e9c9a6506\transformed\lifecycle-runtime-compose-release\res
+com.documentsync.app-ui-release-30 C:\Users\piyus\.gradle\caches\8.10.2\transforms\af5f9d8bc9106911b3fca3cad64fd9a4\transformed\ui-release\res
+com.documentsync.app-ui-text-release-31 C:\Users\piyus\.gradle\caches\8.10.2\transforms\b0404a3a6149cf663377c59322162d64\transformed\ui-text-release\res
+com.documentsync.app-ui-unit-release-32 C:\Users\piyus\.gradle\caches\8.10.2\transforms\b2809eb08b1f20a804f300aaab83153a\transformed\ui-unit-release\res
+com.documentsync.app-foundation-layout-release-33 C:\Users\piyus\.gradle\caches\8.10.2\transforms\b62bebaf9af18e19796fe97a34229873\transformed\foundation-layout-release\res
+com.documentsync.app-profileinstaller-1.3.1-34 C:\Users\piyus\.gradle\caches\8.10.2\transforms\b71b7c7daf10c3fc4f08563e09f60c0e\transformed\profileinstaller-1.3.1\res
+com.documentsync.app-lifecycle-viewmodel-savedstate-2.8.7-35 C:\Users\piyus\.gradle\caches\8.10.2\transforms\bdd8bcd3ec58a33dc1abffb40043a32d\transformed\lifecycle-viewmodel-savedstate-2.8.7\res
+com.documentsync.app-lifecycle-livedata-core-2.8.7-36 C:\Users\piyus\.gradle\caches\8.10.2\transforms\c0459f29a472705a5f5d21f5b7e7c2b8\transformed\lifecycle-livedata-core-2.8.7\res
+com.documentsync.app-material-release-37 C:\Users\piyus\.gradle\caches\8.10.2\transforms\c462882c7242bdd2c28a03348e9ebdc3\transformed\material-release\res
+com.documentsync.app-activity-ktx-1.9.3-38 C:\Users\piyus\.gradle\caches\8.10.2\transforms\c8884ca48a28447d55ac71a4c53fdcb5\transformed\activity-ktx-1.9.3\res
+com.documentsync.app-lifecycle-runtime-ktx-release-39 C:\Users\piyus\.gradle\caches\8.10.2\transforms\cea000f366379320c0acc116e8364c45\transformed\lifecycle-runtime-ktx-release\res
+com.documentsync.app-emoji2-1.3.0-40 C:\Users\piyus\.gradle\caches\8.10.2\transforms\d3b11961ff1bd384492cc07b5f16bb68\transformed\emoji2-1.3.0\res
+com.documentsync.app-animation-core-release-41 C:\Users\piyus\.gradle\caches\8.10.2\transforms\d6b0a1a2f468bd190038142e9282bbf5\transformed\animation-core-release\res
+com.documentsync.app-animation-release-42 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e0423cf227626ca4dce6f65382712dfa\transformed\animation-release\res
+com.documentsync.app-browser-1.8.0-43 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e064bbdd102b885b7194f3fda0b50bc6\transformed\browser-1.8.0\res
+com.documentsync.app-ui-tooling-release-44 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e08b1af5c1c74a2f0ea4aa656a8f6be6\transformed\ui-tooling-release\res
+com.documentsync.app-graphics-path-1.0.1-45 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e9237d8892f895e54384b1b07cd4043d\transformed\graphics-path-1.0.1\res
+com.documentsync.app-lifecycle-process-2.8.7-46 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e94d566233d37a41c28615b98b0a1ef7\transformed\lifecycle-process-2.8.7\res
+com.documentsync.app-runtime-release-47 C:\Users\piyus\.gradle\caches\8.10.2\transforms\e9c80f30825d31b5a0b95ee4a2993991\transformed\runtime-release\res
+com.documentsync.app-material3-release-48 C:\Users\piyus\.gradle\caches\8.10.2\transforms\f40ed477a7acbeeb2d5fc85f3c6b7cbc\transformed\material3-release\res
+com.documentsync.app-core-1.15.0-49 C:\Users\piyus\.gradle\caches\8.10.2\transforms\f6f41b1dab0ffcbd7c540c972f755efd\transformed\core-1.15.0\res
+com.documentsync.app-tracing-1.2.0-50 C:\Users\piyus\.gradle\caches\8.10.2\transforms\f84562b5d71a30be8207c793da7de2fb\transformed\tracing-1.2.0\res
+com.documentsync.app-customview-poolingcontainer-1.0.0-51 C:\Users\piyus\.gradle\caches\8.10.2\transforms\fa65dd3c5c9823ce4bc8fdd505333e33\transformed\customview-poolingcontainer-1.0.0\res

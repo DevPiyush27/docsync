@@ -1,0 +1,4 @@
+com.documentsync.app.test.app-androidTest-0 C:\P2P file transfer project\android\app\build\generated\res\resValues\androidTest\debug
+com.documentsync.app.test.app-mergeDebugAndroidTestResources-1 C:\P2P file transfer project\android\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\merged.dir
+com.documentsync.app.test.app-mergeDebugAndroidTestResources-2 C:\P2P file transfer project\android\app\build\intermediates\incremental\debugAndroidTest\mergeDebugAndroidTestResources\stripped.dir
+com.documentsync.app.test.app-debugAndroidTest-3 C:\P2P file transfer project\android\app\build\intermediates\merged_res\debugAndroidTest\mergeDebugAndroidTestResources

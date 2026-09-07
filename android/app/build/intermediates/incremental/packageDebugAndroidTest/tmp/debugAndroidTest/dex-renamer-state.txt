@@ -1,0 +1,4 @@
+#Mon Sep 07 23:28:59 IST 2026
+base.0=C\:\\P2P file transfer project\\android\\app\\build\\intermediates\\dex\\debugAndroidTest\\mergeProjectDexDebugAndroidTest\\0\\classes.dex
+path.0=0/classes.dex
+renamed.0=classes.dex
