@@ -118,6 +118,7 @@ import io.github.jan.supabase.realtime.PostgresAction
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
+import io.github.jan.supabase.realtime.realtime
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
@@ -276,92 +277,93 @@ fun DocSyncApp() {
     var currentCode by remember { mutableStateOf(generate6DigitCode()) }
     var syncStatus by remember { mutableStateOf<SyncStatus>(SyncStatus.Disconnected) }
     val historyItems = remember { mutableStateListOf<DownloadHistoryItem>() }
-    var realtimeJob by remember { mutableStateOf<Job?>(null) }
 
-    // Start Realtime listener when authenticated
-    fun startListening(client: SupabaseClient, code: String) {
-        realtimeJob?.cancel()
-
-        realtimeJob = coroutineScope.launch {
-            try {
-                syncStatus = SyncStatus.Connecting
-                
-                val channel = client.channel("sync-session-$code")
-                
-                val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
-                    table = "sync_sessions"
-                    filter(FilterOperation("id", FilterOperator.EQ, code))
-                }
-
-                channel.subscribe()
-                syncStatus = SyncStatus.Listening(code)
-
-                changeFlow
-                    .catch { e ->
-                        syncStatus = SyncStatus.Error("Realtime error: ${e.localizedMessage}")
-                    }
-                    .collect { insertAction ->
-                        try {
-                            val session = try {
-                                json.decodeFromJsonElement<SyncSession>(insertAction.record)
-                            } catch (ex: Exception) {
-                                val downloadUrl = insertAction.record["download_url"]?.jsonPrimitive?.contentOrNull ?: ""
-                                val rawName = insertAction.record["file_name"]?.jsonPrimitive?.contentOrNull
-                                val rawSize = insertAction.record["file_size"]?.jsonPrimitive?.longOrNull
-                                val rawUserId = insertAction.record["user_id"]?.jsonPrimitive?.contentOrNull
-                                SyncSession(
-                                    id = code,
-                                    downloadUrl = downloadUrl,
-                                    fileName = rawName,
-                                    fileSize = rawSize,
-                                    userId = rawUserId
-                                )
-                            }
-                            val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
-                            
-                            syncStatus = SyncStatus.TransferReceived(fileName)
-                            
-                            // Native DownloadManager download
-                            enqueueDownload(context, session.downloadUrl, fileName)
-
-                            // Add to history
-                            historyItems.add(
-                                0,
-                                DownloadHistoryItem(
-                                    fileName = fileName,
-                                    downloadUrl = session.downloadUrl,
-                                    fileSize = session.fileSize,
-                                    status = "Saved to Downloads"
-                                )
-                            )
-
-                            // Reset status to listening after 4 seconds
-                            delay(4000)
-                            syncStatus = SyncStatus.Listening(code)
-                        } catch (ex: Exception) {
-                            syncStatus = SyncStatus.Error("Decode error: ${ex.localizedMessage}")
-                        }
-                    }
-            } catch (e: Exception) {
-                syncStatus = SyncStatus.Error("Connection failed: ${e.localizedMessage}")
-            }
-        }
-    }
-
-    // Trigger Realtime on code change or authenticated session
+    // Realtime Listener with proper lifecycle management
     LaunchedEffect(currentCode, sessionStatus, supabaseClient) {
         val client = supabaseClient
-        if (client != null && sessionStatus is SessionStatus.Authenticated) {
-            startListening(client, currentCode)
-        } else {
-            realtimeJob?.cancel()
+        if (client == null || sessionStatus !is SessionStatus.Authenticated) {
             syncStatus = SyncStatus.Disconnected
+            return@LaunchedEffect
         }
-    }
 
-    DisposableEffect(Unit) {
-        onDispose {
-            realtimeJob?.cancel()
+        syncStatus = SyncStatus.Connecting
+
+        // Clean up any stale channels from previous sessions
+        try {
+            client.realtime.removeAllChannels()
+        } catch (_: Exception) {}
+
+        val channelId = "sync-session-$currentCode-${UUID.randomUUID()}"
+        val channel = client.channel(channelId)
+
+        try {
+            val changeFlow = channel.postgresChangeFlow<PostgresAction>(schema = "public") {
+                table = "sync_sessions"
+                filter(FilterOperation("id", FilterOperator.EQ, currentCode))
+            }
+
+            channel.subscribe()
+            syncStatus = SyncStatus.Listening(currentCode)
+
+            changeFlow
+                .catch { e ->
+                    syncStatus = SyncStatus.Error("Realtime error: ${e.localizedMessage}")
+                }
+                .collect { action ->
+                    val record = when (action) {
+                        is PostgresAction.Insert -> action.record
+                        is PostgresAction.Update -> action.record
+                        else -> null
+                    } ?: return@collect
+
+                    try {
+                        val session = try {
+                            json.decodeFromJsonElement<SyncSession>(record)
+                        } catch (ex: Exception) {
+                            val downloadUrl = record["download_url"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val rawName = record["file_name"]?.jsonPrimitive?.contentOrNull
+                            val rawSize = record["file_size"]?.jsonPrimitive?.longOrNull
+                            val rawUserId = record["user_id"]?.jsonPrimitive?.contentOrNull
+                            SyncSession(
+                                id = currentCode,
+                                downloadUrl = downloadUrl,
+                                fileName = rawName,
+                                fileSize = rawSize,
+                                userId = rawUserId
+                            )
+                        }
+                        val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
+                        
+                        syncStatus = SyncStatus.TransferReceived(fileName)
+                        
+                        // Native DownloadManager download
+                        enqueueDownload(context, session.downloadUrl, fileName)
+
+                        // Add to history
+                        historyItems.add(
+                            0,
+                            DownloadHistoryItem(
+                                fileName = fileName,
+                                downloadUrl = session.downloadUrl,
+                                fileSize = session.fileSize,
+                                status = "Saved to Downloads"
+                            )
+                        )
+
+                        // Reset status to listening after 4 seconds
+                        delay(4000)
+                        syncStatus = SyncStatus.Listening(currentCode)
+                    } catch (ex: Exception) {
+                        syncStatus = SyncStatus.Error("Decode error: ${ex.localizedMessage}")
+                    }
+                }
+        } catch (e: Exception) {
+            syncStatus = SyncStatus.Error("Connection failed: ${e.localizedMessage}")
+        } finally {
+            try {
+                channel.unsubscribe()
+                client.realtime.removeChannel(channel)
+            } catch (_: Exception) {}
         }
     }
 

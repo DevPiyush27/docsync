@@ -503,7 +503,62 @@ removeFileBtn.addEventListener("click", (e) => {
 });
 
 /**
- * Form Submission: Authenticated Upload to Supabase Storage & Insert with user_id into sync_sessions
+ * Uploads a file, creates a temporary signed URL, and upserts the session into sync_sessions.
+ * @param {Object} supabase - The Supabase client instance
+ * @param {string} code - The 6-digit pairing code (session ID)
+ * @param {File} file - The file to transfer
+ * @param {string} userId - The authenticated user's ID
+ * @returns {Promise<{ downloadUrl: string, filePath: string }>}
+ */
+async function uploadAndBroadcastSyncSession(supabase, code, file, userId) {
+    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `sync_${code}_${Date.now()}_${cleanName}`;
+
+    // 1. Upload file to Supabase Storage bucket 'sync_uploads'
+    const { error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true
+        });
+
+    if (uploadError) {
+        throw new Error(`Storage upload failed: ${uploadError.message}`);
+    }
+
+    // 2. Generate temporary signed URL (valid for 60 seconds)
+    const { data: signedData, error: signedError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .createSignedUrl(filePath, 60);
+
+    if (signedError || !signedData?.signedUrl) {
+        throw new Error(`Failed to generate signed download URL: ${signedError?.message || "Unknown error"}`);
+    }
+
+    const downloadUrl = signedData.signedUrl;
+
+    // 3. Upsert record into sync_sessions table using 6-digit code as primary key ID
+    const { error: upsertError } = await supabase
+        .from(TABLE_NAME)
+        .upsert([
+            {
+                id: code,
+                download_url: downloadUrl,
+                file_name: file.name,
+                file_size: file.size,
+                user_id: userId
+            }
+        ]);
+
+    if (upsertError) {
+        throw new Error(`Database upsert failed: ${upsertError.message}`);
+    }
+
+    return { downloadUrl, filePath };
+}
+
+/**
+ * Form Submission: Authenticated Upload to Supabase Storage & Upsert into sync_sessions
  */
 syncForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -535,54 +590,12 @@ syncForm.addEventListener("submit", async (e) => {
         submitBtn.querySelector(".btn-text").classList.add("hidden");
         hideBanner();
 
-        // 1. Authenticated Upload to Supabase Storage (JWT attached automatically)
-        updateProgress(25, "Uploading file securely to Supabase Storage...");
-        const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        const uniquePath = `sync_${code}_${Date.now()}_${cleanName}`;
+        updateProgress(30, "Uploading file securely to Supabase Storage...");
+        
+        // Execute upload, signed URL generation, and upsert
+        await uploadAndBroadcastSyncSession(supabaseClient, code, selectedFile, user.id);
 
-        const { data: uploadData, error: uploadError } = await supabaseClient.storage
-            .from(STORAGE_BUCKET)
-            .upload(uniquePath, selectedFile, {
-                cacheControl: "3600",
-                upsert: true
-            });
-
-        if (uploadError) {
-            throw new Error(`Storage upload failed: ${uploadError.message}`);
-        }
-
-        updateProgress(65, "Generating public download URL...");
-
-        // 2. Retrieve Public Download URL
-        const { data: publicUrlData } = supabaseClient.storage
-            .from(STORAGE_BUCKET)
-            .getPublicUrl(uniquePath);
-
-        const downloadUrl = publicUrlData?.publicUrl;
-        if (!downloadUrl) {
-            throw new Error("Failed to retrieve public URL for uploaded file.");
-        }
-
-        updateProgress(88, "Broadcasting user-scoped sync session to Android...");
-
-        // 3. Insert record into sync_sessions table with user_id parameter for RLS
-        const { error: insertError } = await supabaseClient
-            .from(TABLE_NAME)
-            .insert([
-                {
-                    id: code,
-                    download_url: downloadUrl,
-                    file_name: selectedFile.name,
-                    file_size: selectedFile.size,
-                    user_id: user.id
-                }
-            ]);
-
-        if (insertError) {
-            throw new Error(`Database insert failed: ${insertError.message}`);
-        }
-
-        // 4. Complete
+        // Complete
         updateProgress(100, "Transferred successfully!");
         showBanner(
             `🚀 "${selectedFile.name}" successfully synced to paired Android device (${code})!`,
