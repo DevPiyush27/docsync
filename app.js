@@ -1,7 +1,7 @@
 /**
  * ==============================================================================
  * DocSync — Web Application Controller (Supabase JS v2)
- * Theme: Deep Midnight Blue / Indigo & Violet Glow
+ * Theme: Deep Midnight Blue / Indigo & Violet Glow + Supabase Auth
  * ==============================================================================
  */
 
@@ -16,11 +16,16 @@ const TABLE_NAME = "sync_sessions";
 
 // State
 let supabaseClient = null;
+let currentUser = null;
+let authMode = "login"; // "login" or "signup"
 let selectedFile = null;
 let isUploading = false;
+let isAuthenticating = false;
 let dragCounter = 0;
 
-// DOM Elements
+// DOM Elements — Main Card & Transfer
+const transferCard = document.getElementById("transfer-card");
+const infoGrid = document.getElementById("info-grid");
 const syncForm = document.getElementById("sync-form");
 const codeInput = document.getElementById("code-input");
 const codeStatus = document.getElementById("code-status");
@@ -42,7 +47,27 @@ const statusBanner = document.getElementById("status-banner");
 const bannerMessage = document.getElementById("banner-message");
 const bannerIcon = document.getElementById("banner-icon");
 
-// Config Modal Elements
+// DOM Elements — Auth & User Controls
+const authCard = document.getElementById("auth-card");
+const authForm = document.getElementById("auth-form");
+const tabLogin = document.getElementById("tab-login");
+const tabSignup = document.getElementById("tab-signup");
+const authEmailInput = document.getElementById("auth-email");
+const authPasswordInput = document.getElementById("auth-password");
+const authSubmitBtn = document.getElementById("auth-submit-btn");
+const authBtnText = document.getElementById("auth-btn-text");
+const authBtnSpinner = document.getElementById("auth-btn-spinner");
+const authBanner = document.getElementById("auth-banner");
+const authBannerMsg = document.getElementById("auth-banner-message");
+const authBannerIcon = document.getElementById("auth-banner-icon");
+const authTitle = document.getElementById("auth-title");
+const authSubtitle = document.getElementById("auth-subtitle");
+
+const userControls = document.getElementById("user-controls");
+const userEmailText = document.getElementById("user-email-text");
+const logoutBtn = document.getElementById("logout-btn");
+
+// DOM Elements — Config Modal
 const configBtn = document.getElementById("config-btn");
 const configModal = document.getElementById("config-modal");
 const closeModalBtn = document.getElementById("close-modal-btn");
@@ -51,9 +76,9 @@ const cfgKeyInput = document.getElementById("cfg-key");
 const saveConfigBtn = document.getElementById("save-config-btn");
 
 /**
- * Initialize Supabase Client
+ * Initialize Supabase Client & Setup Auth Listeners
  */
-function initSupabase() {
+async function initSupabase() {
     const savedUrl = localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
     const savedKey = localStorage.getItem("docsync_supabase_key") || DEFAULT_SUPABASE_ANON_KEY;
 
@@ -62,8 +87,27 @@ function initSupabase() {
 
     try {
         if (window.supabase && savedUrl && savedKey) {
-            supabaseClient = window.supabase.createClient(savedUrl, savedKey);
-            console.log("Supabase client initialized successfully.");
+            supabaseClient = window.supabase.createClient(savedUrl, savedKey, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: true
+                }
+            });
+            console.log("Supabase client initialized successfully with session persistence.");
+
+            // Check current session
+            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession();
+            if (sessionError) {
+                console.warn("Session retrieval error:", sessionError);
+            }
+            updateAuthUI(session?.user || null);
+
+            // Listen for auth state changes
+            supabaseClient.auth.onAuthStateChange((event, session) => {
+                console.log("Auth state change event:", event);
+                updateAuthUI(session?.user || null);
+            });
         } else {
             console.warn("Supabase library not loaded or credentials missing.");
         }
@@ -71,6 +115,167 @@ function initSupabase() {
         console.error("Failed to initialize Supabase client:", err);
     }
 }
+
+/**
+ * Update UI depending on whether a user is logged in
+ */
+function updateAuthUI(user) {
+    currentUser = user;
+
+    if (user) {
+        // Authenticated State
+        if (userEmailText) userEmailText.textContent = user.email || "Authenticated User";
+        if (userControls) userControls.classList.remove("hidden");
+        if (authCard) authCard.classList.add("hidden");
+        if (transferCard) transferCard.classList.remove("hidden");
+        if (infoGrid) infoGrid.classList.remove("hidden");
+        hideAuthBanner();
+    } else {
+        // Unauthenticated State
+        if (userControls) userControls.classList.add("hidden");
+        if (transferCard) transferCard.classList.add("hidden");
+        if (infoGrid) infoGrid.classList.add("hidden");
+        if (authCard) authCard.classList.remove("hidden");
+    }
+}
+
+/**
+ * Switch Auth Mode (Sign In vs Create Account)
+ */
+function setAuthMode(mode) {
+    authMode = mode;
+    hideAuthBanner();
+
+    if (mode === "login") {
+        tabLogin.classList.add("active");
+        tabLogin.setAttribute("aria-selected", "true");
+        tabSignup.classList.remove("active");
+        tabSignup.setAttribute("aria-selected", "false");
+        authTitle.textContent = "Welcome back to DocSync";
+        authSubtitle.textContent = "Sign in to access your secure device pairing and file transfer dashboard.";
+        authBtnText.textContent = "Sign In";
+    } else {
+        tabSignup.classList.add("active");
+        tabSignup.setAttribute("aria-selected", "true");
+        tabLogin.classList.remove("active");
+        tabLogin.setAttribute("aria-selected", "false");
+        authTitle.textContent = "Create your DocSync Account";
+        authSubtitle.textContent = "Sign up with your email and password to begin transferring documents with Row-Level Security.";
+        authBtnText.textContent = "Create Account";
+    }
+}
+
+tabLogin.addEventListener("click", () => setAuthMode("login"));
+tabSignup.addEventListener("click", () => setAuthMode("signup"));
+
+/**
+ * Show / Hide Auth Status Banner
+ */
+function showAuthBanner(message, type = "error") {
+    authBanner.className = `banner ${type}`;
+    authBannerMsg.textContent = message;
+
+    if (authBannerIcon) {
+        authBannerIcon.innerHTML = type === "success"
+            ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
+            : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+    }
+
+    authBanner.classList.remove("hidden");
+}
+
+function hideAuthBanner() {
+    if (authBanner) authBanner.classList.add("hidden");
+}
+
+/**
+ * Handle Auth Form Submission (Sign In / Sign Up)
+ */
+authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!supabaseClient) {
+        showAuthBanner("Supabase client is not configured. Click 'Config' in the header to set your project credentials.", "error");
+        return;
+    }
+
+    const email = authEmailInput.value.trim();
+    const password = authPasswordInput.value;
+
+    if (!email || !password) {
+        showAuthBanner("Please provide both email and password.", "error");
+        return;
+    }
+
+    if (password.length < 6) {
+        showAuthBanner("Password must be at least 6 characters.", "error");
+        return;
+    }
+
+    try {
+        isAuthenticating = true;
+        authSubmitBtn.disabled = true;
+        authBtnSpinner.classList.remove("hidden");
+        authBtnText.classList.add("hidden");
+        hideAuthBanner();
+
+        if (authMode === "login") {
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            showAuthBanner("Signed in successfully!", "success");
+            authEmailInput.value = "";
+            authPasswordInput.value = "";
+            updateAuthUI(data.user);
+
+        } else {
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            if (data.user && !data.session) {
+                // Email confirmation is required by Supabase project settings
+                showAuthBanner("Account created! Please check your email inbox to confirm your account.", "success");
+            } else {
+                showAuthBanner("Account created and signed in!", "success");
+                authEmailInput.value = "";
+                authPasswordInput.value = "";
+                updateAuthUI(data.user);
+            }
+        }
+    } catch (err) {
+        console.error("Authentication error:", err);
+        showAuthBanner(err.message || "Failed to authenticate. Please check your credentials.", "error");
+    } finally {
+        isAuthenticating = false;
+        authSubmitBtn.disabled = false;
+        authBtnSpinner.classList.add("hidden");
+        authBtnText.classList.remove("hidden");
+    }
+});
+
+/**
+ * Handle Sign Out
+ */
+logoutBtn.addEventListener("click", async () => {
+    try {
+        if (supabaseClient) {
+            await supabaseClient.auth.signOut();
+        }
+        updateAuthUI(null);
+        showAuthBanner("You have signed out successfully.", "success");
+    } catch (err) {
+        console.error("Sign out error:", err);
+        updateAuthUI(null);
+    }
+});
 
 /**
  * Format bytes into human readable format
@@ -151,7 +356,7 @@ function getFileIconSvg(fileName) {
 }
 
 /**
- * Show / Hide Status Banner
+ * Show / Hide Transfer Status Banner
  */
 function showBanner(message, type = "success") {
     statusBanner.className = `banner ${type}`;
@@ -167,7 +372,7 @@ function showBanner(message, type = "success") {
 }
 
 function hideBanner() {
-    statusBanner.classList.add("hidden");
+    if (statusBanner) statusBanner.classList.add("hidden");
 }
 
 /**
@@ -226,7 +431,6 @@ function handleFile(file) {
  * Event Listeners: 6-Digit Code Input
  */
 codeInput.addEventListener("input", (e) => {
-    // Only permit numeric digits
     const cleaned = e.target.value.replace(/\D/g, "").slice(0, 6);
     e.target.value = cleaned;
 
@@ -299,10 +503,18 @@ removeFileBtn.addEventListener("click", (e) => {
 });
 
 /**
- * Form Submission: Upload to Supabase Storage & Insert into sync_sessions
+ * Form Submission: Authenticated Upload to Supabase Storage & Insert with user_id into sync_sessions
  */
 syncForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+
+    // Verify authenticated user
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) {
+        showBanner("You must be logged in to transfer files.", "error");
+        updateAuthUI(null);
+        return;
+    }
 
     const code = codeInput.value.trim();
     if (code.length !== 6) {
@@ -316,14 +528,6 @@ syncForm.addEventListener("submit", async (e) => {
         return;
     }
 
-    // Check credentials
-    const currentUrl = localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
-    if (!currentUrl || currentUrl.includes("your-project-ref")) {
-        showBanner("Please configure your Supabase URL & Anon Key via the Config button.", "error");
-        configModal.classList.remove("hidden");
-        return;
-    }
-
     try {
         isUploading = true;
         submitBtn.disabled = true;
@@ -331,8 +535,8 @@ syncForm.addEventListener("submit", async (e) => {
         submitBtn.querySelector(".btn-text").classList.add("hidden");
         hideBanner();
 
-        // 1. Prepare File Path & Upload
-        updateProgress(25, "Uploading file to Supabase Storage...");
+        // 1. Authenticated Upload to Supabase Storage (JWT attached automatically)
+        updateProgress(25, "Uploading file securely to Supabase Storage...");
         const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const uniquePath = `sync_${code}_${Date.now()}_${cleanName}`;
 
@@ -347,7 +551,7 @@ syncForm.addEventListener("submit", async (e) => {
             throw new Error(`Storage upload failed: ${uploadError.message}`);
         }
 
-        updateProgress(65, "Generating secure public URL...");
+        updateProgress(65, "Generating public download URL...");
 
         // 2. Retrieve Public Download URL
         const { data: publicUrlData } = supabaseClient.storage
@@ -359,9 +563,9 @@ syncForm.addEventListener("submit", async (e) => {
             throw new Error("Failed to retrieve public URL for uploaded file.");
         }
 
-        updateProgress(88, "Broadcasting sync session to Android device...");
+        updateProgress(88, "Broadcasting user-scoped sync session to Android...");
 
-        // 3. Insert record into sync_sessions table (triggers Android Realtime listener)
+        // 3. Insert record into sync_sessions table with user_id parameter for RLS
         const { error: insertError } = await supabaseClient
             .from(TABLE_NAME)
             .insert([
@@ -369,7 +573,8 @@ syncForm.addEventListener("submit", async (e) => {
                     id: code,
                     download_url: downloadUrl,
                     file_name: selectedFile.name,
-                    file_size: selectedFile.size
+                    file_size: selectedFile.size,
+                    user_id: user.id
                 }
             ]);
 
@@ -380,7 +585,7 @@ syncForm.addEventListener("submit", async (e) => {
         // 4. Complete
         updateProgress(100, "Transferred successfully!");
         showBanner(
-            `🚀 "${selectedFile.name}" successfully sent to paired Android device (${code})! Download has started automatically.`,
+            `🚀 "${selectedFile.name}" successfully synced to paired Android device (${code})!`,
             "success"
         );
 
@@ -405,7 +610,7 @@ syncForm.addEventListener("submit", async (e) => {
 });
 
 /**
- * Modal Event Listeners
+ * Config Modal Event Listeners
  */
 configBtn.addEventListener("click", () => {
     configModal.classList.remove("hidden");

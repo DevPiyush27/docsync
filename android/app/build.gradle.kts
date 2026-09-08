@@ -74,6 +74,7 @@ dependencies {
     // Supabase Kotlin SDK (using BOM)
     val supabaseBom = platform("io.github.jan-tennert.supabase:bom:3.1.1")
     implementation(supabaseBom)
+    implementation("io.github.jan-tennert.supabase:auth-kt")
     implementation("io.github.jan-tennert.supabase:postgrest-kt")
     implementation("io.github.jan-tennert.supabase:realtime-kt")
 

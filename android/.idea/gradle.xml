@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
+  <component name="GradleMigrationSettings" migrationVersion="1" />
   <component name="GradleSettings">
     <option name="linkedExternalProjectsSettings">
       <GradleProjectSettings>
@@ -13,7 +14,7 @@
             <option value="$PROJECT_DIR$/app" />
           </set>
         </option>
-        <option name="myGradleHome" value="C:\gradial for application\gradle-8.10.2-bin\gradle-8.10.2" />
+        <option name="myGradleHome" value="C:\gradial for application for doc sync\gradle-8.10.2-bin\gradle-8.10.2" />
       </GradleProjectSettings>
     </option>
   </component>

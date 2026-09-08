@@ -44,15 +44,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -75,6 +80,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -91,11 +97,18 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.status.SessionStatus
+import io.github.jan.supabase.auth.user.UserInfo
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperation
@@ -134,6 +147,8 @@ data class SyncSession(
     val fileName: String? = null,
     @SerialName("file_size")
     val fileSize: Long? = null,
+    @SerialName("user_id")
+    val userId: String? = null,
     @SerialName("created_at")
     val createdAt: String? = null
 )
@@ -156,7 +171,7 @@ sealed interface SyncStatus {
 }
 
 // ==============================================================================
-// 2. Default Configuration Constants
+// 2. Default Configuration Constants & Theme Colors
 // ==============================================================================
 
 private const val PREFS_NAME = "docsync_prefs"
@@ -227,40 +242,49 @@ fun DocSyncApp() {
     val coroutineScope = rememberCoroutineScope()
     val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
 
-    // State
+    // Supabase Configuration State
     var supabaseUrl by remember { mutableStateOf(prefs.getString(KEY_SUPABASE_URL, DEFAULT_SUPABASE_URL) ?: DEFAULT_SUPABASE_URL) }
     var supabaseAnonKey by remember { mutableStateOf(prefs.getString(KEY_SUPABASE_KEY, DEFAULT_SUPABASE_ANON_KEY) ?: DEFAULT_SUPABASE_ANON_KEY) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+
+    // Supabase Client Instance (includes Auth, Postgrest, Realtime)
+    val supabaseClient = remember(supabaseUrl, supabaseAnonKey) {
+        if (supabaseUrl.isNotBlank() && !supabaseUrl.contains("your-project-ref") && supabaseAnonKey.isNotBlank()) {
+            try {
+                createSupabaseClient(
+                    supabaseUrl = supabaseUrl,
+                    supabaseKey = supabaseAnonKey
+                ) {
+                    install(Auth)
+                    install(Postgrest)
+                    install(Realtime)
+                }
+            } catch (e: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+
+    // Session Status Flow from Supabase Auth
+    val sessionStatus by (supabaseClient?.auth?.sessionStatus?.collectAsState(initial = SessionStatus.LoadingFromStorage)
+        ?: remember { mutableStateOf(SessionStatus.NotAuthenticated(false)) })
+
+    // Transfer State
     var currentCode by remember { mutableStateOf(generate6DigitCode()) }
     var syncStatus by remember { mutableStateOf<SyncStatus>(SyncStatus.Disconnected) }
     val historyItems = remember { mutableStateListOf<DownloadHistoryItem>() }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-
-    // Supabase Client and Active Realtime Subscription Job
-    var supabaseClient by remember { mutableStateOf<SupabaseClient?>(null) }
     var realtimeJob by remember { mutableStateOf<Job?>(null) }
 
-    // Function to re-initialize Supabase & Realtime Listener for the active code
-    fun startListening(code: String) {
+    // Start Realtime listener when authenticated
+    fun startListening(client: SupabaseClient, code: String) {
         realtimeJob?.cancel()
-
-        if (supabaseUrl.isBlank() || supabaseUrl.contains("your-project-ref") || supabaseAnonKey.isBlank()) {
-            syncStatus = SyncStatus.Error("Please configure valid Supabase credentials in Settings.")
-            return
-        }
 
         realtimeJob = coroutineScope.launch {
             try {
                 syncStatus = SyncStatus.Connecting
                 
-                val client = createSupabaseClient(
-                    supabaseUrl = supabaseUrl,
-                    supabaseKey = supabaseAnonKey
-                ) {
-                    install(Postgrest)
-                    install(Realtime)
-                }
-                supabaseClient = client
-
                 val channel = client.channel("sync-session-$code")
                 
                 val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
@@ -283,18 +307,20 @@ fun DocSyncApp() {
                                 val downloadUrl = insertAction.record["download_url"]?.jsonPrimitive?.contentOrNull ?: ""
                                 val rawName = insertAction.record["file_name"]?.jsonPrimitive?.contentOrNull
                                 val rawSize = insertAction.record["file_size"]?.jsonPrimitive?.longOrNull
+                                val rawUserId = insertAction.record["user_id"]?.jsonPrimitive?.contentOrNull
                                 SyncSession(
                                     id = code,
                                     downloadUrl = downloadUrl,
                                     fileName = rawName,
-                                    fileSize = rawSize
+                                    fileSize = rawSize,
+                                    userId = rawUserId
                                 )
                             }
                             val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
                             
                             syncStatus = SyncStatus.TransferReceived(fileName)
                             
-                            // Native DownloadManager file download
+                            // Native DownloadManager download
                             enqueueDownload(context, session.downloadUrl, fileName)
 
                             // Add to history
@@ -321,14 +347,25 @@ fun DocSyncApp() {
         }
     }
 
-    LaunchedEffect(currentCode, supabaseUrl, supabaseAnonKey) {
-        startListening(currentCode)
+    // Trigger Realtime on code change or authenticated session
+    LaunchedEffect(currentCode, sessionStatus, supabaseClient) {
+        val client = supabaseClient
+        if (client != null && sessionStatus is SessionStatus.Authenticated) {
+            startListening(client, currentCode)
+        } else {
+            realtimeJob?.cancel()
+            syncStatus = SyncStatus.Disconnected
+        }
     }
 
     DisposableEffect(Unit) {
         onDispose {
             realtimeJob?.cancel()
         }
+    }
+
+    val currentUser: UserInfo? = (sessionStatus as? SessionStatus.Authenticated)?.let {
+        supabaseClient?.auth?.currentUserOrNull()
     }
 
     Scaffold(
@@ -370,15 +407,40 @@ fun DocSyncApp() {
                                 )
                             }
                             Text(
-                                text = "Realtime Web-to-Android Node",
+                                text = if (currentUser != null) currentUser.email ?: "Authenticated Node" else "Secure P2P Sync",
                                 fontSize = 10.sp,
                                 color = TextMuted,
-                                fontWeight = FontWeight.Medium
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
                 },
                 actions = {
+                    // Sign Out Button (when authenticated)
+                    if (sessionStatus is SessionStatus.Authenticated && supabaseClient != null) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    supabaseClient.auth.signOut()
+                                    Toast.makeText(context, "Signed out successfully.", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(Color.White.copy(alpha = 0.05f))
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Logout,
+                                contentDescription = "Sign Out",
+                                tint = Color(0xFFFDA4AF)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+
+                    // Settings Button
                     IconButton(
                         onClick = { showSettingsDialog = true },
                         modifier = Modifier
@@ -398,71 +460,99 @@ fun DocSyncApp() {
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
                 .padding(horizontal = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            contentAlignment = Alignment.TopCenter
         ) {
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Hero Pairing Code Card
-            PairingCodeCard(
-                code = currentCode,
-                onCopy = {
-                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    val clip = ClipData.newPlainText("DocSync Pairing Code", currentCode)
-                    clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "Pairing code $currentCode copied!", Toast.LENGTH_SHORT).show()
-                },
-                onRegenerate = {
-                    currentCode = generate6DigitCode()
-                    Toast.makeText(context, "Generated new code: $currentCode", Toast.LENGTH_SHORT).show()
-                }
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Realtime Connection Status Pill
-            ConnectionStatusBadge(status = syncStatus)
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Download Activity Section Header
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Recent Transfers",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFF8FAFC)
-                )
-                if (historyItems.isNotEmpty()) {
-                    Text(
-                        text = "${historyItems.size} files",
-                        fontSize = 12.sp,
-                        color = TextMuted,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-
-            if (historyItems.isEmpty()) {
-                EmptyStateCard()
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    items(historyItems, key = { it.id }) { item ->
-                        DownloadItemCard(item = item)
+            when (sessionStatus) {
+                is SessionStatus.LoadingFromStorage -> {
+                    // Loading State
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = PrimaryIndigo)
                     }
+                }
+
+                is SessionStatus.Authenticated -> {
+                    // Authenticated Transfer UI
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Hero Pairing Code Card
+                        PairingCodeCard(
+                            code = currentCode,
+                            onCopy = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("DocSync Pairing Code", currentCode)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Pairing code $currentCode copied!", Toast.LENGTH_SHORT).show()
+                            },
+                            onRegenerate = {
+                                currentCode = generate6DigitCode()
+                                Toast.makeText(context, "Generated new code: $currentCode", Toast.LENGTH_SHORT).show()
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        // Realtime Connection Status Pill
+                        ConnectionStatusBadge(status = syncStatus)
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // Download Activity Section Header
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Recent Transfers",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFF8FAFC)
+                            )
+                            if (historyItems.isNotEmpty()) {
+                                Text(
+                                    text = "${historyItems.size} files",
+                                    fontSize = 12.sp,
+                                    color = TextMuted,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+
+                        if (historyItems.isEmpty()) {
+                            EmptyStateCard()
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                items(historyItems, key = { it.id }) { item ->
+                                    DownloadItemCard(item = item)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    // Unauthenticated: Show Auth Card Screen
+                    AuthCardScreen(
+                        supabaseClient = supabaseClient,
+                        onOpenSettings = { showSettingsDialog = true }
+                    )
                 }
             }
         }
@@ -489,7 +579,296 @@ fun DocSyncApp() {
 }
 
 // ==============================================================================
-// 5. Compose UI Components
+// 5. Compose Authentication Screen
+// ==============================================================================
+
+@Composable
+fun AuthCardScreen(
+    supabaseClient: SupabaseClient?,
+    onOpenSettings: () -> Unit
+) {
+    var isLoginMode by remember { mutableStateOf(true) }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, CardBorderGradient, RoundedCornerShape(26.dp)),
+            shape = RoundedCornerShape(26.dp),
+            colors = CardDefaults.cardColors(containerColor = BgCard)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Chip Badge
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(PrimaryIndigo.copy(alpha = 0.15f))
+                        .border(1.dp, PrimaryIndigo.copy(alpha = 0.35f), RoundedCornerShape(50))
+                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = "SECURE CLOUD SYNC",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFA5B4FC),
+                        letterSpacing = 1.5.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = if (isLoginMode) "Welcome to DocSync" else "Create Account",
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Text(
+                    text = if (isLoginMode) "Sign in to connect your device and receive files in real time." else "Sign up with your email to start syncing with Row-Level Security.",
+                    fontSize = 12.sp,
+                    color = TextMuted,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
+                )
+
+                // Tab Selector
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(BgMain)
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (isLoginMode) AccentGradient else Color.Transparent)
+                            .clickable {
+                                isLoginMode = true
+                                errorMessage = null
+                            }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Sign In",
+                            color = if (isLoginMode) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(if (!isLoginMode) AccentGradient else Color.Transparent)
+                            .clickable {
+                                isLoginMode = false
+                                errorMessage = null
+                            }
+                            .padding(vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Sign Up",
+                            color = if (!isLoginMode) Color.White else TextMuted,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Email Input
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = {
+                        email = it
+                        errorMessage = null
+                    },
+                    label = { Text("Email Address") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Email,
+                            contentDescription = null,
+                            tint = PrimaryIndigo,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryIndigo,
+                        unfocusedBorderColor = BorderSubtle,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = PrimaryIndigo,
+                        unfocusedLabelColor = TextMuted
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Password Input
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = {
+                        password = it
+                        errorMessage = null
+                    },
+                    label = { Text("Password (min. 6 characters)") },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = PrimaryIndigo,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                tint = TextMuted
+                            )
+                        }
+                    },
+                    visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = PrimaryIndigo,
+                        unfocusedBorderColor = BorderSubtle,
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = PrimaryIndigo,
+                        unfocusedLabelColor = TextMuted
+                    ),
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Error Message Display
+                if (errorMessage != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF7F1D1D).copy(alpha = 0.3f))
+                            .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .padding(12.dp)
+                    ) {
+                        Text(
+                            text = errorMessage ?: "",
+                            color = Color(0xFFFCA5A5),
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Action Button
+                Button(
+                    onClick = {
+                        val trimmedEmail = email.trim()
+                        val trimmedPass = password.trim()
+
+                        if (supabaseClient == null) {
+                            errorMessage = "Supabase credentials are not configured. Tap the Settings icon in the header."
+                            return@Button
+                        }
+
+                        if (trimmedEmail.isBlank() || trimmedPass.isBlank()) {
+                            errorMessage = "Please provide both email and password."
+                            return@Button
+                        }
+
+                        if (trimmedPass.length < 6) {
+                            errorMessage = "Password must be at least 6 characters."
+                            return@Button
+                        }
+
+                        isLoading = true
+                        errorMessage = null
+
+                        coroutineScope.launch {
+                            try {
+                                if (isLoginMode) {
+                                    supabaseClient.auth.signInWith(Email) {
+                                        this.email = trimmedEmail
+                                        this.password = trimmedPass
+                                    }
+                                    Toast.makeText(context, "Signed in successfully!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    supabaseClient.auth.signUpWith(Email) {
+                                        this.email = trimmedEmail
+                                        this.password = trimmedPass
+                                    }
+                                    Toast.makeText(context, "Account created! You are now logged in.", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                errorMessage = e.localizedMessage ?: "Authentication failed. Please check credentials."
+                            } finally {
+                                isLoading = false
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(50.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                    shape = RoundedCornerShape(14.dp),
+                    enabled = !isLoading
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = if (isLoginMode) "Sign In" else "Create Account",
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ==============================================================================
+// 6. Compose UI Components
 // ==============================================================================
 
 @Composable
@@ -843,7 +1222,7 @@ fun EmptyStateCard() {
 }
 
 // ==============================================================================
-// 6. Settings Dialog
+// 7. Settings Dialog
 // ==============================================================================
 
 @Composable
@@ -928,7 +1307,7 @@ fun SettingsDialog(
 }
 
 // ==============================================================================
-// 7. Helpers & Native Download Engine
+// 8. Helpers & Native Download Engine
 // ==============================================================================
 
 private fun generate6DigitCode(): String {
@@ -969,7 +1348,7 @@ private fun enqueueDownload(context: Context, downloadUrl: String, rawFileName: 
 }
 
 // ==============================================================================
-// 8. Compose Theme
+// 9. Compose Theme
 // ==============================================================================
 
 @Composable

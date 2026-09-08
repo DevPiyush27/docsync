@@ -288,6 +288,54 @@ body {
     50% { opacity: 0.4; transform: scale(0.85); }
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+}
+
+.user-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    animation: fadeIn 0.3s ease;
+}
+
+.user-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.38rem 0.75rem;
+    border-radius: var(--radius-full);
+    background: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.28);
+    font-size: 0.76rem;
+    color: var(--text-highlight);
+    max-width: 170px;
+}
+
+.user-avatar-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent-emerald);
+    box-shadow: 0 0 8px var(--accent-emerald);
+    flex-shrink: 0;
+}
+
+.user-email-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-family: var(--font-mono);
+}
+
+.logout-btn:hover {
+    background: rgba(244, 63, 94, 0.15);
+    border-color: rgba(244, 63, 94, 0.35);
+    color: #fda4af;
+}
+
 .icon-btn {
     display: inline-flex;
     align-items: center;
@@ -317,6 +365,112 @@ body {
 .icon-btn svg {
     width: 17px;
     height: 17px;
+}
+
+/* ==============================================================================
+   Authentication Card (Login & Signup)
+   ============================================================================== */
+.auth-card {
+    border-radius: var(--radius-xl);
+    padding: 2.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.65rem;
+    position: relative;
+    overflow: hidden;
+    animation: fadeIn 0.35s ease;
+}
+
+.auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent-gradient);
+    opacity: 0.8;
+}
+
+.auth-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: rgba(10, 15, 29, 0.7);
+    padding: 4px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--bg-card-border);
+    gap: 4px;
+}
+
+.auth-tab {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    padding: 0.65rem 1rem;
+    border-radius: calc(var(--radius-md) - 3px);
+    font-family: var(--font-heading);
+    font-size: 0.92rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    outline: none;
+}
+
+.auth-tab:hover:not(.active) {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.auth-tab.active {
+    background: var(--accent-gradient);
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.35);
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.35rem;
+}
+
+.input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    width: 18px;
+    height: 18px;
+    color: var(--text-muted);
+    pointer-events: none;
+    transition: color 0.2s ease;
+}
+
+.input-with-icon input {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1.5px solid var(--bg-input-border);
+    border-radius: var(--radius-md);
+    color: #ffffff;
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    padding: 0.85rem 1rem 0.85rem 2.75rem;
+    outline: none;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-with-icon input:focus {
+    border-color: var(--primary);
+    background: var(--bg-input-focus);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.25);
+}
+
+.input-with-icon input:focus + .input-icon,
+.input-with-icon:focus-within .input-icon {
+    color: var(--primary-light);
 }
 
 /* ==============================================================================
@@ -955,6 +1109,7 @@ body {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 1rem;
+    animation: fadeIn 0.35s ease;
 }
 
 .info-card {
@@ -1173,7 +1328,7 @@ body {
         padding: 1.5rem 1rem 3rem;
     }
 
-    .main-card {
+    .main-card, .auth-card {
         padding: 1.6rem 1.25rem;
         border-radius: var(--radius-lg);
     }
@@ -1196,6 +1351,10 @@ body {
         max-width: 190px;
     }
 
+    .user-chip {
+        max-width: 120px;
+    }
+
     .info-grid {
         grid-template-columns: 1fr;
         gap: 0.75rem;
@@ -1215,5 +1374,9 @@ body {
 
     .file-name {
         max-width: 150px;
+    }
+
+    .user-chip {
+        display: none;
     }
 }
