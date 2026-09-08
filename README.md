@@ -5,7 +5,7 @@
 **Seamless, Secure, and Instant File Transfers between Web and Android.**
 
 [![Website](https://img.shields.io/badge/Web_Portal-Live-00E676?style=for-the-badge&logo=google-chrome&logoColor=white)](YOUR_WEBSITE_LINK_HERE)
-[![Download APK](https://img.shields.io/badge/Download_APK-v1.0-3DDC84?style=for-the-badge&logo=android&logoColor=white)](YOUR_APK_LINK_HERE)
+[![Download APK](https://img.shields.io/badge/Download_APK-v1.0-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/DevPiyush27/docsync/releases/download/v1.0.0/app-debug.apk)
 
 *No cables. No complex logins. Just a 6-digit code.*
 
@@ -59,7 +59,7 @@ Simply generate a 6-digit pairing code on your Android device, enter it into the
 ## 📥 Installation & Usage
 
 **For Android:**
-1. Download the latest `.apk` from the [Releases](YOUR_APK_LINK_HERE) section.
+1. Download the latest `.apk` from the [Releases](https://github.com/DevPiyush27/docsync/releases/download/v1.0.0/app-debug.apk) section.
 2. Install the application on your Android device.
 3. Open the app to generate your sync code.
 
