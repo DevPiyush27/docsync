@@ -4,7 +4,7 @@
 
 **Seamless, Secure, and Instant File Transfers between Web and Android.**
 
-[![Website](https://img.shields.io/badge/Web_Portal-Live-00E676?style=for-the-badge&logo=google-chrome&logoColor=white)](YOUR_WEBSITE_LINK_HERE)
+[![Website](https://img.shields.io/badge/Web_Portal-Live-00E676?style=for-the-badge&logo=google-chrome&logoColor=white)](https://devpiyush27.github.io/docsync/)
 [![Download APK](https://img.shields.io/badge/Download_APK-v1.0-3DDC84?style=for-the-badge&logo=android&logoColor=white)](https://github.com/DevPiyush27/docsync/releases/download/v1.0.0/app-debug.apk)
 
 *No cables. No complex logins. Just a 6-digit code.*
@@ -64,7 +64,7 @@ Simply generate a 6-digit pairing code on your Android device, enter it into the
 3. Open the app to generate your sync code.
 
 **For Desktop/Web:**
-1. Navigate to the [DocSync Web Portal](YOUR_WEBSITE_LINK_HERE).
+1. Navigate to the [DocSync Web Portal](https://devpiyush27.github.io/docsync/).
 2. Enter your email to receive a secure login link.
 3. Enter the 6-digit code from your phone and upload your file.
 
