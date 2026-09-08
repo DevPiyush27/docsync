@@ -93,6 +93,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -268,7 +269,7 @@ fun DocSyncApp() {
     }
 
     // Session Status Flow from Supabase Auth
-    val sessionStatus by (supabaseClient?.auth?.sessionStatus?.collectAsState(initial = SessionStatus.LoadingFromStorage)
+    val sessionStatus by (supabaseClient?.auth?.sessionStatus?.collectAsState(initial = SessionStatus.Initializing)
         ?: remember { mutableStateOf(SessionStatus.NotAuthenticated(false)) })
 
     // Transfer State
@@ -468,7 +469,7 @@ fun DocSyncApp() {
             contentAlignment = Alignment.TopCenter
         ) {
             when (sessionStatus) {
-                is SessionStatus.LoadingFromStorage -> {
+                is SessionStatus.Initializing -> {
                     // Loading State
                     Box(
                         modifier = Modifier.fillMaxSize(),
@@ -663,7 +664,7 @@ fun AuthCardScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isLoginMode) AccentGradient else Color.Transparent)
+                            .background(if (isLoginMode) AccentGradient else SolidColor(Color.Transparent))
                             .clickable {
                                 isLoginMode = true
                                 errorMessage = null
@@ -683,7 +684,7 @@ fun AuthCardScreen(
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (!isLoginMode) AccentGradient else Color.Transparent)
+                            .background(if (!isLoginMode) AccentGradient else SolidColor(Color.Transparent))
                             .clickable {
                                 isLoginMode = false
                                 errorMessage = null
