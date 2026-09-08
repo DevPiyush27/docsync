@@ -11,6 +11,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -20,6 +21,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -43,9 +45,14 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.InsertDriveFile
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -80,6 +87,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -97,6 +105,7 @@ import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import kotlinx.serialization.SerialName
@@ -133,8 +142,9 @@ data class DownloadHistoryItem(
     val id: String = UUID.randomUUID().toString(),
     val fileName: String,
     val downloadUrl: String,
+    val fileSize: Long? = null,
     val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "Download Enqueued"
+    val status: String = "Saved to Downloads"
 )
 
 sealed interface SyncStatus {
@@ -153,7 +163,6 @@ private const val PREFS_NAME = "docsync_prefs"
 private const val KEY_SUPABASE_URL = "supabase_url"
 private const val KEY_SUPABASE_KEY = "supabase_anon_key"
 
-// Replace with your project defaults or configure inside the app settings modal
 private const val DEFAULT_SUPABASE_URL = "https://zqiozemfwidrlpksxbza.supabase.co"
 private const val DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxaW96ZW1md2lkcmxwa3N4YnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODQ1MzUsImV4cCI6MjEwNDM2MDUzNX0.p50TkFOysj6nKy1xbaQWwuV-SirkAhdL_EzqGs_rcZk"
 
@@ -162,6 +171,28 @@ private val json = Json {
     isLenient = true
     coerceInputValues = true
 }
+
+// Colors
+val BgMain = Color(0xFF060913)
+val BgCard = Color(0xFF0F172A).copy(alpha = 0.78f)
+val PrimaryIndigo = Color(0xFF6366F1)
+val SecondaryViolet = Color(0xFF8B5CF6)
+val AccentPink = Color(0xFFD946EF)
+val SuccessEmerald = Color(0xFF10B981)
+val TextMuted = Color(0xFF94A3B8)
+val BorderSubtle = Color(0xFF25304C)
+
+val AccentGradient = Brush.linearGradient(
+    listOf(PrimaryIndigo, SecondaryViolet, AccentPink)
+)
+
+val CardBorderGradient = Brush.linearGradient(
+    listOf(
+        PrimaryIndigo.copy(alpha = 0.55f),
+        SecondaryViolet.copy(alpha = 0.35f),
+        AccentPink.copy(alpha = 0.15f)
+    )
+)
 
 // ==============================================================================
 // 3. Main Activity
@@ -176,7 +207,7 @@ class MainActivity : ComponentActivity() {
             DocSyncTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color(0xFF090D16)
+                    color = BgMain
                 ) {
                     DocSyncApp()
                 }
@@ -221,7 +252,6 @@ fun DocSyncApp() {
             try {
                 syncStatus = SyncStatus.Connecting
                 
-                // Initialize client if not already created
                 val client = createSupabaseClient(
                     supabaseUrl = supabaseUrl,
                     supabaseKey = supabaseAnonKey
@@ -231,20 +261,16 @@ fun DocSyncApp() {
                 }
                 supabaseClient = client
 
-                // Create a channel for sync sessions
                 val channel = client.channel("sync-session-$code")
                 
-                // Set up Postgres change flow for INSERT events filtered by this session code
                 val changeFlow = channel.postgresChangeFlow<PostgresAction.Insert>(schema = "public") {
                     table = "sync_sessions"
                     filter(FilterOperation("id", FilterOperator.EQ, code))
                 }
 
-                // Subscribe to channel
                 channel.subscribe()
                 syncStatus = SyncStatus.Listening(code)
 
-                // Collect incoming insert events
                 changeFlow
                     .catch { e ->
                         syncStatus = SyncStatus.Error("Realtime error: ${e.localizedMessage}")
@@ -277,12 +303,13 @@ fun DocSyncApp() {
                                 DownloadHistoryItem(
                                     fileName = fileName,
                                     downloadUrl = session.downloadUrl,
+                                    fileSize = session.fileSize,
                                     status = "Saved to Downloads"
                                 )
                             )
 
                             // Reset status to listening after 4 seconds
-                            kotlinx.coroutines.delay(4000)
+                            delay(4000)
                             syncStatus = SyncStatus.Listening(code)
                         } catch (ex: Exception) {
                             syncStatus = SyncStatus.Error("Decode error: ${ex.localizedMessage}")
@@ -294,12 +321,10 @@ fun DocSyncApp() {
         }
     }
 
-    // Start listening on code change or credentials change
     LaunchedEffect(currentCode, supabaseUrl, supabaseAnonKey) {
         startListening(currentCode)
     }
 
-    // Clean up on dispose
     DisposableEffect(Unit) {
         onDispose {
             realtimeJob?.cancel()
@@ -307,49 +332,68 @@ fun DocSyncApp() {
     }
 
     Scaffold(
-        containerColor = Color(0xFF090D16),
+        containerColor = BgMain,
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(34.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(Color(0xFF3B82F6), Color(0xFF8B5CF6), Color(0xFFEC4899))
-                                    )
-                                ),
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(AccentGradient),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Sync,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(22.dp)
                             )
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "DocSync",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = Color.White
-                        )
+                        Column {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "Doc",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Sync",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 20.sp,
+                                    color = PrimaryIndigo
+                                )
+                            }
+                            Text(
+                                text = "Realtime Web-to-Android Node",
+                                fontSize = 10.sp,
+                                color = TextMuted,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showSettingsDialog = true }) {
+                    IconButton(
+                        onClick = { showSettingsDialog = true },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.05f))
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color(0xFF94A3B8)
+                            tint = Color(0xFFC7D2FE)
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF090D16)
+                    containerColor = BgMain
                 )
             )
         }
@@ -361,7 +405,7 @@ fun DocSyncApp() {
                 .padding(horizontal = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Hero Pairing Code Card
             PairingCodeCard(
@@ -370,31 +414,44 @@ fun DocSyncApp() {
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("DocSync Pairing Code", currentCode)
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "Code $currentCode copied to clipboard!", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Pairing code $currentCode copied!", Toast.LENGTH_SHORT).show()
                 },
                 onRegenerate = {
                     currentCode = generate6DigitCode()
-                    Toast.makeText(context, "New code generated: $currentCode", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Generated new code: $currentCode", Toast.LENGTH_SHORT).show()
                 }
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(18.dp))
 
             // Realtime Connection Status Pill
             ConnectionStatusBadge(status = syncStatus)
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Download Activity History
-            Text(
-                text = "Recent Transfers",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFFF8FAFC),
+            // Download Activity Section Header
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Recent Transfers",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFF8FAFC)
+                )
+                if (historyItems.isNotEmpty()) {
+                    Text(
+                        text = "${historyItems.size} files",
+                        fontSize = 12.sp,
+                        color = TextMuted,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
 
             if (historyItems.isEmpty()) {
                 EmptyStateCard()
@@ -446,31 +503,38 @@ fun PairingCodeCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                brush = Brush.linearGradient(
-                    listOf(Color(0xFF3B82F6).copy(alpha = 0.5f), Color(0xFF8B5CF6).copy(alpha = 0.5f))
-                ),
-                shape = RoundedCornerShape(24.dp)
+                brush = CardBorderGradient,
+                shape = RoundedCornerShape(26.dp)
             ),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121826).copy(alpha = 0.85f))
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(24.dp),
+                .padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "PAIRING CODE",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF3B82F6),
-                letterSpacing = 2.sp
-            )
+            // Chip Badge
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(PrimaryIndigo.copy(alpha = 0.15f))
+                    .border(1.dp, PrimaryIndigo.copy(alpha = 0.35f), RoundedCornerShape(50))
+                    .padding(horizontal = 10.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "DEVICE PAIRING CODE",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFA5B4FC),
+                    letterSpacing = 1.5.sp
+                )
+            }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
-            // Formatted 6-Digit Code Display
+            // Formatted 6-Digit Neon Tiles
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -479,9 +543,15 @@ fun PairingCodeCard(
                     Box(
                         modifier = Modifier
                             .size(width = 44.dp, height = 58.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF090D16))
-                            .border(1.dp, Color(0xFF2563EB).copy(alpha = 0.4f), RoundedCornerShape(12.dp)),
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(BgMain)
+                            .border(
+                                1.dp,
+                                Brush.verticalGradient(
+                                    listOf(PrimaryIndigo.copy(alpha = 0.6f), SecondaryViolet.copy(alpha = 0.25f))
+                                ),
+                                RoundedCornerShape(14.dp)
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -495,27 +565,30 @@ fun PairingCodeCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Enter this code on the DocSync web app to transfer files directly to this device.",
+                text = "Enter this 6-digit code on the DocSync web portal to transfer documents directly to this device.",
                 fontSize = 12.sp,
-                color = Color(0xFF94A3B8),
+                color = TextMuted,
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp
             )
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Quick Actions
+            // Action Buttons Row
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Button(
                     onClick = onCopy,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.08f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
@@ -524,13 +597,16 @@ fun PairingCodeCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Copy Code", color = Color.White, fontSize = 13.sp)
+                    Text("Copy Code", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Button(
                     onClick = onRegenerate,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B)),
-                    shape = RoundedCornerShape(12.dp)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.White.copy(alpha = 0.08f)
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
@@ -539,7 +615,7 @@ fun PairingCodeCard(
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("New Code", color = Color.White, fontSize = 13.sp)
+                    Text("New Code", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -551,9 +627,9 @@ fun ConnectionStatusBadge(status: SyncStatus) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 0.85f,
-        targetValue = 1.25f,
+        targetValue = 1.3f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = FastOutSlowInEasing),
+            animation = tween(1100, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "scale"
@@ -561,29 +637,49 @@ fun ConnectionStatusBadge(status: SyncStatus) {
 
     val (bgColor, borderColor, textColor, dotColor, label) = when (status) {
         is SyncStatus.Disconnected -> StatusStyle(
-            Color(0xFF1E293B), Color(0xFF334155), Color(0xFF94A3B8), Color(0xFF64748B), "Disconnected"
+            Color(0xFF1E293B).copy(alpha = 0.6f),
+            Color(0xFF334155),
+            Color(0xFF94A3B8),
+            Color(0xFF64748B),
+            "Disconnected"
         )
         is SyncStatus.Connecting -> StatusStyle(
-            Color(0xFF1E3A8A).copy(alpha = 0.3f), Color(0xFF3B82F6), Color(0xFF93C5FD), Color(0xFF3B82F6), "Connecting to Realtime..."
+            Color(0xFF1E3A8A).copy(alpha = 0.25f),
+            PrimaryIndigo.copy(alpha = 0.6f),
+            Color(0xFFC7D2FE),
+            PrimaryIndigo,
+            "Connecting to Realtime Channel..."
         )
         is SyncStatus.Listening -> StatusStyle(
-            Color(0xFF064E3B).copy(alpha = 0.3f), Color(0xFF10B981), Color(0xFF6EE7B7), Color(0xFF10B981), "Ready • Listening for code ${status.code}"
+            SuccessEmerald.copy(alpha = 0.15f),
+            SuccessEmerald.copy(alpha = 0.5f),
+            Color(0xFF6EE7B7),
+            SuccessEmerald,
+            "Listening • Ready for code ${status.code}"
         )
         is SyncStatus.TransferReceived -> StatusStyle(
-            Color(0xFF701A75).copy(alpha = 0.4f), Color(0xFFEC4899), Color(0xFFF472B6), Color(0xFFEC4899), "Receiving: ${status.fileName}"
+            AccentPink.copy(alpha = 0.2f),
+            AccentPink.copy(alpha = 0.6f),
+            Color(0xFFFBCFE8),
+            AccentPink,
+            "Receiving: ${status.fileName}"
         )
         is SyncStatus.Error -> StatusStyle(
-            Color(0xFF450A0A).copy(alpha = 0.4f), Color(0xFFEF4444), Color(0xFFFCA5A5), Color(0xFFEF4444), status.message
+            Color(0xFF7F1D1D).copy(alpha = 0.25f),
+            Color(0xFFEF4444).copy(alpha = 0.5f),
+            Color(0xFFFCA5A5),
+            Color(0xFFEF4444),
+            status.message
         )
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(bgColor)
-            .border(1.dp, borderColor.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .border(1.dp, borderColor, RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 11.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -592,7 +688,7 @@ fun ConnectionStatusBadge(status: SyncStatus) {
             Box(
                 modifier = Modifier
                     .size(10.dp)
-                    .scale(if (status is SyncStatus.Listening || status is SyncStatus.Connecting) pulseScale else 1f)
+                    .scale(if (status is SyncStatus.Listening || status is SyncStatus.Connecting || status is SyncStatus.TransferReceived) pulseScale else 1f)
                     .clip(CircleShape)
                     .background(dotColor)
             )
@@ -600,7 +696,7 @@ fun ConnectionStatusBadge(status: SyncStatus) {
                 text = label,
                 color = textColor,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -622,12 +718,16 @@ fun DownloadItemCard(item: DownloadHistoryItem) {
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(item.timestamp))
     }
 
+    val fileIcon = remember(item.fileName) {
+        getFileIconForName(item.fileName)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFF2563EB).copy(alpha = 0.15f), RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121826))
+            .border(1.dp, BorderSubtle, RoundedCornerShape(18.dp)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard)
     ) {
         Row(
             modifier = Modifier
@@ -638,16 +738,16 @@ fun DownloadItemCard(item: DownloadHistoryItem) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color(0xFF3B82F6).copy(alpha = 0.15f)),
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(AccentGradient),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Download,
+                    imageVector = fileIcon,
                     contentDescription = null,
-                    tint = Color(0xFF3B82F6),
-                    modifier = Modifier.size(20.dp)
+                    tint = Color.White,
+                    modifier = Modifier.size(22.dp)
                 )
             }
 
@@ -668,17 +768,29 @@ fun DownloadItemCard(item: DownloadHistoryItem) {
                     Icon(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF10B981),
-                        modifier = Modifier.size(12.dp)
+                        tint = SuccessEmerald,
+                        modifier = Modifier.size(13.dp)
                     )
                     Text(
                         text = "${item.status} • $formattedTime",
-                        color = Color(0xFF94A3B8),
-                        fontSize = 11.sp
+                        color = TextMuted,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
             }
         }
+    }
+}
+
+private fun getFileIconForName(fileName: String): ImageVector {
+    val ext = fileName.substringAfterLast('.', "").lowercase()
+    return when (ext) {
+        "pdf" -> Icons.Default.PictureAsPdf
+        "png", "jpg", "jpeg", "webp", "gif", "svg" -> Icons.Default.Image
+        "mp4", "mkv", "mov", "webm", "avi" -> Icons.Default.Videocam
+        "mp3", "wav", "flac", "m4a", "ogg" -> Icons.Default.MusicNote
+        else -> Icons.Default.InsertDriveFile
     }
 }
 
@@ -687,36 +799,44 @@ fun EmptyStateCard() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFF1E293B), RoundedCornerShape(16.dp)),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF121826).copy(alpha = 0.5f))
+            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = BgCard.copy(alpha = 0.45f))
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(28.dp),
+                .padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Folder,
-                contentDescription = null,
-                tint = Color(0xFF475569),
-                modifier = Modifier.size(36.dp)
-            )
-            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = 0.05f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Folder,
+                    contentDescription = null,
+                    tint = TextMuted,
+                    modifier = Modifier.size(30.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "No transfers yet",
-                color = Color(0xFF94A3B8),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "Files sent from the web app will appear here and download automatically to your public Downloads folder.",
-                color = Color(0xFF64748B),
+                color = TextMuted,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 4.dp)
+                modifier = Modifier.padding(top = 6.dp)
             )
         }
     }
@@ -738,33 +858,38 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF111827),
+        containerColor = Color(0xFF0F172A),
+        shape = RoundedCornerShape(24.dp),
         title = {
             Text(
-                text = "Supabase Credentials",
+                text = "Supabase Configuration",
                 color = Color.White,
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(
                     text = "Configure your Supabase project credentials for real-time document synchronization.",
-                    color = Color(0xFF94A3B8),
-                    fontSize = 12.sp
+                    color = TextMuted,
+                    fontSize = 12.sp,
+                    lineHeight = 16.sp
                 )
                 OutlinedTextField(
                     value = urlText,
                     onValueChange = { urlText = it },
                     label = { Text("Supabase URL") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF3B82F6),
-                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedBorderColor = PrimaryIndigo,
+                        unfocusedBorderColor = BorderSubtle,
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = PrimaryIndigo,
+                        unfocusedLabelColor = TextMuted
                     ),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
@@ -772,12 +897,15 @@ fun SettingsDialog(
                     onValueChange = { keyText = it },
                     label = { Text("Supabase Anon Key") },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color(0xFF3B82F6),
-                        unfocusedBorderColor = Color(0xFF334155),
+                        focusedBorderColor = PrimaryIndigo,
+                        unfocusedBorderColor = BorderSubtle,
                         focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White
+                        unfocusedTextColor = Color.White,
+                        focusedLabelColor = PrimaryIndigo,
+                        unfocusedLabelColor = TextMuted
                     ),
                     singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -785,14 +913,15 @@ fun SettingsDialog(
         confirmButton = {
             Button(
                 onClick = { onSave(urlText.trim(), keyText.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3B82F6))
+                colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Save", color = Color.White)
+                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", color = Color(0xFF94A3B8))
+                Text("Cancel", color = TextMuted)
             }
         }
     )
@@ -802,17 +931,10 @@ fun SettingsDialog(
 // 7. Helpers & Native Download Engine
 // ==============================================================================
 
-/**
- * Generates a random 6-digit string (e.g., "582914").
- */
 private fun generate6DigitCode(): String {
     return Random.nextInt(100000, 999999).toString()
 }
 
-/**
- * Uses the native Android DownloadManager to save the file into the public Downloads directory.
- * Crucial: No WRITE_EXTERNAL_STORAGE permission is required for DownloadManager on modern Android.
- */
 private fun enqueueDownload(context: Context, downloadUrl: String, rawFileName: String) {
     try {
         val uri = Uri.parse(downloadUrl)
@@ -853,11 +975,11 @@ private fun enqueueDownload(context: Context, downloadUrl: String, rawFileName: 
 @Composable
 fun DocSyncTheme(content: @Composable () -> Unit) {
     val darkScheme = darkColorScheme(
-        primary = Color(0xFF3B82F6),
-        secondary = Color(0xFF8B5CF6),
-        tertiary = Color(0xFFEC4899),
-        background = Color(0xFF090D16),
-        surface = Color(0xFF121826)
+        primary = PrimaryIndigo,
+        secondary = SecondaryViolet,
+        tertiary = AccentPink,
+        background = BgMain,
+        surface = BgCard
     )
 
     MaterialTheme(

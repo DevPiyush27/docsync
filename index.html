@@ -1,1474 +1,16 @@
-<<<<<<< HEAD
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DropVault | Serverless P2P File Transfer</title>
-    <meta
-      name="description"
-      content="Sleek, zero-backend file transfer powered by Supabase Storage & GitHub Pages."
-    />
-
-    <!-- Google Fonts & Lucide Icons -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap"
-      rel="stylesheet"
-    />
-    <script src="https://unpkg.com/lucide@latest"></script>
-
-    <!-- Supabase JS Client v2 (CDN) -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <style>
-      :root {
-        --bg-gradient:
-          radial-gradient(
-            circle at 15% 20%,
-            rgba(99, 102, 241, 0.15) 0%,
-            transparent 40%
-          ),
-          radial-gradient(
-            circle at 85% 80%,
-            rgba(16, 185, 129, 0.12) 0%,
-            transparent 40%
-          ),
-          radial-gradient(
-            circle at 50% 50%,
-            rgba(14, 165, 233, 0.08) 0%,
-            transparent 60%
-          ),
-          #090d16;
-        --card-bg: rgba(18, 24, 38, 0.75);
-        --card-border: rgba(255, 255, 255, 0.08);
-        --card-border-glow: rgba(99, 102, 241, 0.45);
-        --primary: #6366f1;
-        --primary-hover: #4f46e5;
-        --primary-glow: rgba(99, 102, 241, 0.35);
-        --accent: #10b981;
-        --accent-glow: rgba(16, 185, 129, 0.3);
-        --danger: #ef4444;
-        --warning: #f59e0b;
-        --text-main: #f8fafc;
-        --text-muted: #94a3b8;
-        --input-bg: rgba(11, 15, 25, 0.8);
-        --radius-sm: 8px;
-        --radius-md: 14px;
-        --radius-lg: 20px;
-      }
-
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family:
-          "Outfit",
-          -apple-system,
-          BlinkMacSystemFont,
-          sans-serif;
-        -webkit-font-smoothing: antialiased;
-      }
-
-      body {
-        min-height: 100vh;
-        background: var(--bg-gradient);
-        background-attachment: fixed;
-        color: var(--text-main);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 2.5rem 1rem 4rem;
-        position: relative;
-        overflow-x: hidden;
-      }
-
-      body::before {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image:
-          linear-gradient(
-            to right,
-            rgba(255, 255, 255, 0.02) 1px,
-            transparent 1px
-          ),
-          linear-gradient(
-            to bottom,
-            rgba(255, 255, 255, 0.02) 1px,
-            transparent 1px
-          );
-        background-size: 40px 40px;
-        pointer-events: none;
-        z-index: 0;
-      }
-
-      .container {
-        width: 100%;
-        max-width: 680px;
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-        position: relative;
-        z-index: 1;
-      }
-
-      .header {
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .badge-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        padding: 0.3rem 0.85rem;
-        border-radius: 9999px;
-        background: rgba(99, 102, 241, 0.12);
-        border: 1px solid rgba(99, 102, 241, 0.3);
-        font-size: 0.78rem;
-        font-weight: 600;
-        color: #a5b4fc;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        margin-bottom: 0.25rem;
-        backdrop-filter: blur(10px);
-      }
-
-      .badge-pill .pulse-dot {
-        width: 7px;
-        height: 7px;
-        background: var(--accent);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--accent);
-        animation: pulse 2s infinite ease-in-out;
-      }
-
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 1;
-          transform: scale(1);
-        }
-        50% {
-          opacity: 0.4;
-          transform: scale(0.8);
-        }
-      }
-
-      .header h1 {
-        font-size: 2.5rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-      }
-
-      .header p {
-        color: var(--text-muted);
-        font-size: 0.98rem;
-        max-width: 460px;
-        line-height: 1.5;
-      }
-
-      .glass-card {
-        background: var(--card-bg);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid var(--card-border);
-        border-radius: var(--radius-lg);
-        padding: 1.8rem;
-        box-shadow:
-          0 20px 40px -15px rgba(0, 0, 0, 0.5),
-          inset 0 1px 0 rgba(255, 255, 255, 0.08);
-        transition:
-          border-color 0.3s ease,
-          box-shadow 0.3s ease;
-      }
-
-      .glass-card:focus-within {
-        border-color: var(--card-border-glow);
-      }
-
-      .card-title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 1.3rem;
-      }
-
-      .card-title-left {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-        font-size: 1.15rem;
-        font-weight: 700;
-        color: #fff;
-      }
-
-      .card-title-left i {
-        color: var(--primary);
-        width: 20px;
-        height: 20px;
-      }
-
-      .form-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-        margin-bottom: 1.25rem;
-      }
-
-      label {
-        font-size: 0.85rem;
-        font-weight: 500;
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-
-      .pin-wrapper {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-
-      .pin-input {
-        width: 100%;
-        background: var(--input-bg);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-md);
-        padding: 0.85rem 1rem;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 1.2rem;
-        letter-spacing: 0.35em;
-        color: #fff;
-        outline: none;
-        transition: all 0.2s ease;
-        text-align: center;
-      }
-
-      .pin-input::placeholder {
-        letter-spacing: normal;
-        font-size: 0.9rem;
-        font-family: "Outfit", sans-serif;
-        color: rgba(148, 163, 184, 0.4);
-      }
-
-      .pin-input:focus {
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px var(--primary-glow);
-        background: rgba(15, 23, 42, 0.95);
-      }
-
-      .pin-input.unlocked {
-        border-color: var(--accent);
-        box-shadow: 0 0 0 2px var(--accent-glow);
-      }
-
-      .pin-status-icon {
-        position: absolute;
-        right: 1rem;
-        color: var(--text-muted);
-        pointer-events: none;
-        display: flex;
-        align-items: center;
-        transition: color 0.2s;
-      }
-
-      .dropzone {
-        border: 2px dashed rgba(255, 255, 255, 0.12);
-        border-radius: var(--radius-md);
-        padding: 2rem 1.5rem;
-        text-align: center;
-        background: rgba(11, 15, 25, 0.4);
-        cursor: pointer;
-        transition: all 0.25s ease;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.8rem;
-        position: relative;
-      }
-
-      .dropzone:hover,
-      .dropzone.dragover {
-        border-color: var(--primary);
-        background: rgba(99, 102, 241, 0.06);
-        transform: translateY(-2px);
-      }
-
-      .dropzone input[type="file"] {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        opacity: 0;
-        cursor: pointer;
-      }
-
-      .dropzone-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 50%;
-        background: rgba(99, 102, 241, 0.12);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--primary);
-        transition: transform 0.2s;
-      }
-
-      .dropzone:hover .dropzone-icon {
-        transform: scale(1.1);
-      }
-
-      .dropzone-text {
-        font-size: 0.92rem;
-        color: var(--text-muted);
-      }
-
-      .dropzone-text strong {
-        color: #fff;
-      }
-
-      .file-preview {
-        display: none;
-        align-items: center;
-        justify-content: space-between;
-        background: rgba(99, 102, 241, 0.08);
-        border: 1px solid rgba(99, 102, 241, 0.25);
-        border-radius: var(--radius-md);
-        padding: 0.75rem 1rem;
-        margin-top: 0.75rem;
-        animation: fadeIn 0.3s ease;
-      }
-
-      .file-preview.active {
-        display: flex;
-      }
-
-      .file-info {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        overflow: hidden;
-      }
-
-      .file-icon-box {
-        width: 36px;
-        height: 36px;
-        border-radius: var(--radius-sm);
-        background: rgba(99, 102, 241, 0.2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #a5b4fc;
-        flex-shrink: 0;
-      }
-
-      .file-details {
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-      }
-
-      .file-name {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: #fff;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 320px;
-      }
-
-      .file-size {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        font-family: "JetBrains Mono", monospace;
-      }
-
-      .btn-clear-file {
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        cursor: pointer;
-        padding: 0.3rem;
-        border-radius: 4px;
-        display: flex;
-        align-items: center;
-        transition: all 0.2s;
-      }
-
-      .btn-clear-file:hover {
-        color: var(--danger);
-        background: rgba(239, 68, 68, 0.1);
-      }
-
-      .progress-container {
-        display: none;
-        flex-direction: column;
-        gap: 0.35rem;
-        margin-top: 0.75rem;
-        margin-bottom: 0.75rem;
-        animation: fadeIn 0.2s ease;
-      }
-
-      .progress-container.active {
-        display: flex;
-      }
-
-      .progress-bar-bg {
-        width: 100%;
-        height: 6px;
-        background: rgba(255, 255, 255, 0.08);
-        border-radius: 999px;
-        overflow: hidden;
-      }
-
-      .progress-bar-fill {
-        height: 100%;
-        width: 0%;
-        background: linear-gradient(90deg, var(--primary), var(--accent));
-        border-radius: 999px;
-        transition: width 0.3s ease;
-      }
-
-      .progress-text {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        display: flex;
-        justify-content: space-between;
-        font-family: "JetBrains Mono", monospace;
-      }
-
-      .btn {
-        width: 100%;
-        background: linear-gradient(135deg, var(--primary) 0%, #4338ca 100%);
-        color: #fff;
-        border: none;
-        border-radius: var(--radius-md);
-        padding: 0.9rem 1.5rem;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 0.5rem;
-        transition: all 0.25s ease;
-        box-shadow: 0 8px 20px var(--primary-glow);
-      }
-
-      .btn:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 12px 24px var(--primary-glow);
-        filter: brightness(1.1);
-      }
-
-      .btn:active:not(:disabled) {
-        transform: translateY(0);
-      }
-
-      .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        box-shadow: none;
-        filter: grayscale(0.5);
-      }
-
-      .btn-icon-only {
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        color: var(--text-muted);
-        border-radius: var(--radius-sm);
-        width: 34px;
-        height: 34px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-
-      .btn-icon-only:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-      }
-
-      .btn-icon-only.spinning i {
-        animation: spin 1s linear infinite;
-      }
-
-      @keyframes spin {
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-
-      .toast {
-        position: fixed;
-        top: 24px;
-        right: 24px;
-        max-width: 380px;
-        padding: 0.85rem 1.25rem;
-        border-radius: var(--radius-md);
-        background: #1e293b;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-        font-size: 0.9rem;
-        font-weight: 500;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
-        transform: translateY(-80px);
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 100;
-      }
-
-      .toast.show {
-        transform: translateY(0);
-        opacity: 1;
-      }
-
-      .toast.success {
-        border-color: rgba(16, 185, 129, 0.4);
-        background: rgba(6, 78, 59, 0.95);
-      }
-
-      .toast.error {
-        border-color: rgba(239, 68, 68, 0.4);
-        background: rgba(127, 29, 29, 0.95);
-      }
-
-      .shake {
-        animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-      }
-
-      @keyframes shake {
-        10%,
-        90% {
-          transform: translate3d(-1px, 0, 0);
-        }
-        20%,
-        80% {
-          transform: translate3d(2px, 0, 0);
-        }
-        30%,
-        50%,
-        70% {
-          transform: translate3d(-4px, 0, 0);
-        }
-        40%,
-        60% {
-          transform: translate3d(4px, 0, 0);
-        }
-      }
-
-      .file-list {
-        display: flex;
-        flex-direction: column;
-        gap: 0.65rem;
-        max-height: 420px;
-        overflow-y: auto;
-        padding-right: 4px;
-      }
-
-      .file-list::-webkit-scrollbar {
-        width: 5px;
-      }
-      .file-list::-webkit-scrollbar-track {
-        background: rgba(255, 255, 255, 0.02);
-        border-radius: 10px;
-      }
-      .file-list::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.15);
-        border-radius: 10px;
-      }
-
-      .file-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: rgba(11, 15, 25, 0.6);
-        border: 1px solid rgba(255, 255, 255, 0.05);
-        border-radius: var(--radius-md);
-        padding: 0.85rem 1rem;
-        transition: all 0.2s ease;
-      }
-
-      .file-item:hover {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.12);
-        transform: translateX(3px);
-      }
-
-      .file-item.new-file {
-        border-color: rgba(16, 185, 129, 0.4);
-        background: rgba(16, 185, 129, 0.06);
-        animation: fadeIn 0.4s ease;
-      }
-
-      .file-item-left {
-        display: flex;
-        align-items: center;
-        gap: 0.85rem;
-        overflow: hidden;
-      }
-
-      .file-item-title {
-        font-size: 0.92rem;
-        font-weight: 500;
-        color: #f1f5f9;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 320px;
-      }
-
-      .file-item-meta {
-        font-size: 0.75rem;
-        color: var(--text-muted);
-        display: flex;
-        gap: 0.75rem;
-        margin-top: 0.15rem;
-        font-family: "JetBrains Mono", monospace;
-      }
-
-      .file-item-actions {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        flex-shrink: 0;
-      }
-
-      .btn-download {
-        background: rgba(16, 185, 129, 0.12);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        color: #34d399;
-        padding: 0.45rem 0.85rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.82rem;
-        font-weight: 600;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        cursor: pointer;
-        transition: all 0.2s ease;
-      }
-
-      .btn-download:hover {
-        background: rgba(16, 185, 129, 0.22);
-        border-color: #10b981;
-        color: #fff;
-        box-shadow: 0 0 12px var(--accent-glow);
-      }
-
-      .empty-state {
-        text-align: center;
-        padding: 3rem 1rem;
-        color: var(--text-muted);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 0.6rem;
-      }
-
-      .empty-state i {
-        width: 44px;
-        height: 44px;
-        color: rgba(148, 163, 184, 0.3);
-      }
-
-      .setup-helper-card {
-        display: none;
-        background: rgba(245, 158, 11, 0.08);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        border-radius: var(--radius-md);
-        padding: 1.25rem;
-        margin-bottom: 1.5rem;
-        animation: fadeIn 0.3s ease;
-      }
-
-      .setup-helper-card.active {
-        display: block;
-      }
-
-      .setup-helper-header {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: #fcd34d;
-        font-weight: 700;
-        font-size: 0.95rem;
-        margin-bottom: 0.5rem;
-      }
-
-      .setup-helper-content {
-        font-size: 0.85rem;
-        color: #e2e8f0;
-        line-height: 1.5;
-      }
-
-      .code-snippet-box {
-        background: #0b0f19;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: var(--radius-sm);
-        padding: 0.75rem 1rem;
-        margin: 0.75rem 0;
-        position: relative;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.76rem;
-        color: #a5b4fc;
-        overflow-x: auto;
-        white-space: pre;
-      }
-
-      .btn-copy-sql {
-        background: rgba(99, 102, 241, 0.2);
-        border: 1px solid rgba(99, 102, 241, 0.4);
-        color: #c7d2fe;
-        padding: 0.35rem 0.75rem;
-        border-radius: var(--radius-sm);
-        font-size: 0.78rem;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        transition: all 0.2s;
-        margin-top: 0.4rem;
-      }
-
-      .btn-copy-sql:hover {
-        background: rgba(99, 102, 241, 0.35);
-        color: #fff;
-      }
-
-      .live-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.35rem;
-        font-size: 0.72rem;
-        color: var(--accent);
-        font-family: "JetBrains Mono", monospace;
-        background: rgba(16, 185, 129, 0.1);
-        padding: 0.2rem 0.5rem;
-        border-radius: 999px;
-        border: 1px solid rgba(16, 185, 129, 0.25);
-      }
-
-      .live-pill .dot {
-        width: 6px;
-        height: 6px;
-        background: var(--accent);
-        border-radius: 50%;
-        animation: pulse 1.5s infinite ease-in-out;
-      }
-
-      footer {
-        text-align: center;
-        margin-top: 1rem;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-      }
-
-      footer a {
-        color: #a5b4fc;
-        text-decoration: none;
-      }
-
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      @media (max-width: 640px) {
-        .container {
-          padding: 0;
-        }
-        .glass-card {
-          padding: 1.3rem;
-        }
-        .file-item-title,
-        .file-name {
-          max-width: 170px;
-        }
-        .header h1 {
-          font-size: 2rem;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div id="toast" class="toast" role="alert">
-      <i id="toastIcon" data-lucide="info"></i>
-      <span id="toastMsg">Notification message</span>
-    </div>
-
-    <div class="container">
-      <header class="header">
-        <div class="badge-pill">
-          <span class="pulse-dot"></span>
-          Zero Backend &bull; Supabase Storage
-        </div>
-        <h1>DropVault</h1>
-        <p>
-          Secure, lightweight file transfer with real-time sync, PIN
-          authentication, and Supabase cloud storage.
-        </p>
-      </header>
-
-      <div id="setupHelperCard" class="setup-helper-card">
-        <div class="setup-helper-header">
-          <i data-lucide="alert-triangle" style="width: 18px; height: 18px"></i>
-          <span id="setupHelperTitle"
-            >Action Required: Setup Supabase Bucket</span
-          >
-        </div>
-        <div class="setup-helper-content">
-          <p id="setupHelperMsg">
-            The bucket <code>oops-assignments</code> was not found or lacks
-            permissions in your Supabase project.
-          </p>
-          <p style="margin-top: 0.4rem">
-            Run this 1-click script in your
-            <strong>Supabase SQL Editor</strong> to create the bucket and public
-            storage policies:
-          </p>
-          <div class="code-snippet-box" id="sqlSnippet">
-            -- 1. Create oops-assignments bucket INSERT INTO storage.buckets
-            (id, name, public) VALUES ('oops-assignments', 'oops-assignments',
-            true) ON CONFLICT (id) DO UPDATE SET public = true; -- 2. Allow
-            anyone to list and download files CREATE POLICY "Public Access" ON
-            storage.objects FOR SELECT TO public USING (bucket_id =
-            'oops-assignments'); -- 3. Allow anyone to upload files CREATE
-            POLICY "Public Upload" ON storage.objects FOR INSERT TO public WITH
-            CHECK (bucket_id = 'oops-assignments'); -- 4. Allow overwrite /
-            updates CREATE POLICY "Public Update" ON storage.objects FOR UPDATE
-            TO public USING (bucket_id = 'oops-assignments');
-          </div>
-          <button type="button" class="btn-copy-sql" id="btnCopySql">
-            <i data-lucide="copy" style="width: 14px; height: 14px"></i>
-            <span>Copy SQL Script</span>
-          </button>
-        </div>
-      </div>
-
-      <main class="glass-card" id="uploadCard">
-        <div class="card-title">
-          <div class="card-title-left">
-            <i data-lucide="upload-cloud"></i>
-            <span>Upload File</span>
-          </div>
-          <span
-            style="
-              font-size: 0.8rem;
-              color: var(--text-muted);
-              font-family: &quot;JetBrains Mono&quot;;
-            "
-            >Bucket: oops-assignments</span
-          >
-        </div>
-
-        <div class="form-group" id="pinGroup">
-          <label for="pinInput">
-            <span>Security Passcode (4 Digits)</span>
-            <span
-              id="pinHelper"
-              style="font-size: 0.75rem; color: var(--text-muted)"
-              >Default: 1234</span
-            >
-          </label>
-          <div class="pin-wrapper">
-            <input
-              type="password"
-              id="pinInput"
-              class="pin-input"
-              maxlength="4"
-              placeholder="&bull; &bull; &bull; &bull;"
-              autocomplete="off"
-              inputmode="numeric"
-            />
-            <div class="pin-status-icon" id="pinStatusIcon">
-              <i data-lucide="lock" style="width: 18px; height: 18px"></i>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Select File</label>
-          <div class="dropzone" id="dropzone">
-            <input type="file" id="fileInput" />
-            <div class="dropzone-icon">
-              <i data-lucide="file-up"></i>
-            </div>
-            <div class="dropzone-text">
-              <strong>Click to browse</strong> or drag & drop your file here
-            </div>
-          </div>
-
-          <div class="file-preview" id="filePreview">
-            <div class="file-info">
-              <div class="file-icon-box">
-                <i data-lucide="file" style="width: 20px; height: 20px"></i>
-              </div>
-              <div class="file-details">
-                <span class="file-name" id="previewFileName">filename.zip</span>
-                <span class="file-size" id="previewFileSize">0 KB</span>
-              </div>
-            </div>
-            <button
-              type="button"
-              class="btn-clear-file"
-              id="btnClearFile"
-              title="Remove file"
-            >
-              <i data-lucide="x" style="width: 18px; height: 18px"></i>
-            </button>
-          </div>
-
-          <div class="progress-container" id="progressContainer">
-            <div class="progress-bar-bg">
-              <div class="progress-bar-fill" id="progressBarFill"></div>
-            </div>
-            <div class="progress-text">
-              <span id="progressStatus">Uploading...</span>
-              <span id="progressPercent">0%</span>
-            </div>
-          </div>
-        </div>
-
-        <button type="button" class="btn" id="btnUpload">
-          <i data-lucide="arrow-up-circle"></i>
-          <span id="btnUploadText">Upload to Vault</span>
-        </button>
-      </main>
-
-      <section class="glass-card" id="downloadCard">
-        <div class="card-title">
-          <div class="card-title-left">
-            <i data-lucide="folder-down"></i>
-            <span>Files Available for Download</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 0.6rem">
-            <div class="live-pill" id="liveSyncPill" style="display: none">
-              <span class="dot"></span> Live Sync
-            </div>
-            <button
-              class="btn-icon-only"
-              id="btnRefresh"
-              title="Refresh files list"
-            >
-              <i data-lucide="refresh-cw" style="width: 16px; height: 16px"></i>
-            </button>
-          </div>
-        </div>
-
-        <div class="file-list" id="fileListContainer">
-          <div class="empty-state" id="initialState">
-            <i data-lucide="key-round"></i>
-            <p>
-              Enter 4-digit PIN (<strong>1234</strong>) above to unlock
-              real-time files.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <footer>
-        <span
-          >&copy; DropVault &bull; Crafted with Supabase & GitHub Pages</span
-        >
-      </footer>
-    </div>
-
-    <script>
-      const SUPABASE_URL = "https://elpertmpojaecawqzbyu.supabase.co";
-      const SUPABASE_ANON_KEY =
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVscGVydG1wb2phZWNhd3F6Ynl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1ODI2MjUsImV4cCI6MjEwNDE1ODYyNX0.gXY00sEyAxYXIwo716cJ5cyOxImFMmtYMsJaaJ2axS";
-      const BUCKET_NAME = "oops-assignments";
-
-      const ACCESS_PIN = "1234";
-
-      let supabase = null;
-      let isUnlocked = false;
-      let pollingInterval = null;
-
-      if (SUPABASE_URL && SUPABASE_ANON_KEY && window.supabase) {
-        supabase = window.supabase.createClient(
-          SUPABASE_URL,
-          SUPABASE_ANON_KEY,
-        );
-      }
-
-      const pinInput = document.getElementById("pinInput");
-      const pinGroup = document.getElementById("pinGroup");
-      const pinStatusIcon = document.getElementById("pinStatusIcon");
-      const dropzone = document.getElementById("dropzone");
-      const fileInput = document.getElementById("fileInput");
-      const filePreview = document.getElementById("filePreview");
-      const previewFileName = document.getElementById("previewFileName");
-      const previewFileSize = document.getElementById("previewFileSize");
-      const btnClearFile = document.getElementById("btnClearFile");
-      const btnUpload = document.getElementById("btnUpload");
-      const btnUploadText = document.getElementById("btnUploadText");
-      const btnRefresh = document.getElementById("btnRefresh");
-      const fileListContainer = document.getElementById("fileListContainer");
-      const toast = document.getElementById("toast");
-      const toastMsg = document.getElementById("toastMsg");
-      const toastIcon = document.getElementById("toastIcon");
-      const progressContainer = document.getElementById("progressContainer");
-      const progressBarFill = document.getElementById("progressBarFill");
-      const progressPercent = document.getElementById("progressPercent");
-      const progressStatus = document.getElementById("progressStatus");
-      const liveSyncPill = document.getElementById("liveSyncPill");
-      const setupHelperCard = document.getElementById("setupHelperCard");
-      const setupHelperMsg = document.getElementById("setupHelperMsg");
-      const btnCopySql = document.getElementById("btnCopySql");
-      const sqlSnippet = document.getElementById("sqlSnippet");
-
-      let selectedFile = null;
-      let knownFilesMap = new Map();
-
-      lucide.createIcons();
-
-      function showToast(message, type = "info") {
-        toastMsg.textContent = message;
-        toast.className = `toast show ${type}`;
-
-        let iconName = "info";
-        if (type === "success") iconName = "check-circle";
-        if (type === "error") iconName = "alert-octagon";
-
-        toastIcon.setAttribute("data-lucide", iconName);
-        lucide.createIcons();
-
-        setTimeout(() => {
-          toast.className = "toast";
-        }, 4500);
-      }
-
-      function formatBytes(bytes, decimals = 2) {
-        if (!+bytes) return "0 Bytes";
-        const k = 1024;
-        const dm = decimals < 0 ? 0 : decimals;
-        const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
-      }
-
-      function formatDate(dateString) {
-        if (!dateString) return "Recently";
-        const date = new Date(dateString);
-        return date.toLocaleDateString(undefined, {
-          month: "short",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        });
-      }
-
-      function getFileIcon(filename) {
-        const ext = filename.split(".").pop().toLowerCase();
-        const imageExts = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
-        const codeExts = [
-          "js",
-          "ts",
-          "html",
-          "css",
-          "py",
-          "java",
-          "cpp",
-          "c",
-          "json",
-        ];
-        const archiveExts = ["zip", "rar", "tar", "gz", "7z"];
-        const docExts = ["pdf", "doc", "docx", "txt", "md"];
-
-        if (imageExts.includes(ext)) return "image";
-        if (codeExts.includes(ext)) return "file-code";
-        if (archiveExts.includes(ext)) return "archive";
-        if (docExts.includes(ext)) return "file-text";
-        return "file";
-      }
-
-      btnCopySql.addEventListener("click", () => {
-        navigator.clipboard.writeText(sqlSnippet.textContent);
-        showToast("SQL setup script copied to clipboard!", "success");
-      });
-
-      function setUnlockedState(unlocked) {
-        isUnlocked = unlocked;
-        if (unlocked) {
-          pinInput.classList.add("unlocked");
-          pinStatusIcon.innerHTML =
-            '<i data-lucide="unlock" style="width: 18px; height: 18px; color: var(--accent);"></i>';
-          liveSyncPill.style.display = "inline-flex";
-          lucide.createIcons();
-
-          if (!pollingInterval) {
-            pollingInterval = setInterval(() => {
-              if (isUnlocked) fetchFiles(false);
-            }, 4000);
-          }
-        } else {
-          pinInput.classList.remove("unlocked");
-          pinStatusIcon.innerHTML =
-            '<i data-lucide="lock" style="width: 18px; height: 18px; color: var(--text-muted);"></i>';
-          liveSyncPill.style.display = "none";
-          lucide.createIcons();
-          if (pollingInterval) {
-            clearInterval(pollingInterval);
-            pollingInterval = null;
-          }
-        }
-      }
-
-      function verifyPIN() {
-        if (isUnlocked) return true;
-        const enteredPIN = pinInput.value.trim();
-        if (enteredPIN === ACCESS_PIN) {
-          setUnlockedState(true);
-          showToast("PIN Verified! Real-time sync active.", "success");
-          return true;
-        } else {
-          setUnlockedState(false);
-          pinGroup.classList.remove("shake");
-          void pinGroup.offsetWidth;
-          pinGroup.classList.add("shake");
-          showToast("Invalid 4-digit PIN! Access Denied.", "error");
-          return false;
-        }
-      }
-
-      pinInput.addEventListener("input", () => {
-        if (pinInput.value.length === 4) {
-          if (pinInput.value.trim() === ACCESS_PIN) {
-            setUnlockedState(true);
-            showToast("PIN Verified!", "success");
-            fetchFiles(true);
-          } else {
-            setUnlockedState(false);
-            pinStatusIcon.innerHTML =
-              '<i data-lucide="lock" style="width: 18px; height: 18px; color: var(--danger);"></i>';
-            lucide.createIcons();
-          }
-        } else {
-          if (isUnlocked) setUnlockedState(false);
-        }
-      });
-
-      function handleFileSelection(file) {
-        if (!file) return;
-        selectedFile = file;
-        previewFileName.textContent = file.name;
-        previewFileSize.textContent = formatBytes(file.size);
-        filePreview.classList.add("active");
-        lucide.createIcons();
-      }
-
-      fileInput.addEventListener("change", (e) => {
-        if (e.target.files.length > 0) {
-          handleFileSelection(e.target.files[0]);
-        }
-      });
-
-      btnClearFile.addEventListener("click", () => {
-        selectedFile = null;
-        fileInput.value = "";
-        filePreview.classList.remove("active");
-      });
-
-      ["dragenter", "dragover"].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          dropzone.classList.add("dragover");
-        });
-      });
-
-      ["dragleave", "drop"].forEach((eventName) => {
-        dropzone.addEventListener(eventName, (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          dropzone.classList.remove("dragover");
-        });
-      });
-
-      dropzone.addEventListener("drop", (e) => {
-        if (e.dataTransfer.files.length > 0) {
-          handleFileSelection(e.dataTransfer.files[0]);
-        }
-      });
-
-      btnUpload.addEventListener("click", async () => {
-        if (!verifyPIN()) return;
-
-        if (!supabase) {
-          showToast("Supabase not initialized.", "error");
-          return;
-        }
-
-        if (!selectedFile) {
-          showToast("Please select a file to upload first.", "error");
-          return;
-        }
-
-        try {
-          btnUpload.disabled = true;
-          btnUploadText.textContent = "Uploading...";
-          progressContainer.classList.add("active");
-          progressBarFill.style.width = "25%";
-          progressPercent.textContent = "25%";
-          progressStatus.textContent = "Sending to Supabase...";
-
-          const cleanFileName = selectedFile.name.replace(/[^\w\d.-]/g, "_");
-          const filePath = `${cleanFileName}`;
-
-          progressBarFill.style.width = "65%";
-          progressPercent.textContent = "65%";
-
-          const { data, error } = await supabase.storage
-            .from(BUCKET_NAME)
-            .upload(filePath, selectedFile, {
-              cacheControl: "3600",
-              upsert: true,
-            });
-
-          if (error) throw error;
-
-          progressBarFill.style.width = "100%";
-          progressPercent.textContent = "100%";
-          progressStatus.textContent = "Complete!";
-
-          showToast(`"${selectedFile.name}" uploaded successfully!`, "success");
-
-          renderSingleFile(
-            {
-              name: cleanFileName,
-              created_at: new Date().toISOString(),
-              metadata: { size: selectedFile.size },
-            },
-            true,
-          );
-
-          selectedFile = null;
-          fileInput.value = "";
-          filePreview.classList.remove("active");
-
-          setupHelperCard.classList.remove("active");
-
-          await fetchFiles(false);
-        } catch (err) {
-          console.error("Upload Error:", err);
-          const msg = err.message || "";
-
-          if (
-            msg.includes("Bucket not found") ||
-            msg.includes("NoSuchBucket")
-          ) {
-            setupHelperCard.classList.add("active");
-            setupHelperMsg.innerHTML = `Bucket <code>${BUCKET_NAME}</code> does not exist in your Supabase project. Run the SQL script below to create it.`;
-            showToast(
-              "Bucket not found in Supabase! See instructions above.",
-              "error",
-            );
-          } else if (
-            msg.includes("violates row-level security") ||
-            msg.includes("Unauthorized")
-          ) {
-            setupHelperCard.classList.add("active");
-            setupHelperMsg.innerHTML = `Storage Row-Level Security (RLS) blocked the upload. Run the SQL script below to enable public uploads.`;
-            showToast(
-              "Upload blocked by Supabase RLS. See instructions above.",
-              "error",
-            );
-          } else {
-            showToast(
-              msg || "Upload failed. Check console for details.",
-              "error",
-            );
-          }
-        } finally {
-          btnUpload.disabled = false;
-          btnUploadText.textContent = "Upload to Vault";
-          setTimeout(() => {
-            progressContainer.classList.remove("active");
-            progressBarFill.style.width = "0%";
-          }, 1200);
-          lucide.createIcons();
-        }
-      });
-
-      function renderSingleFile(file, isNew = false) {
-        const emptyState = fileListContainer.querySelector(".empty-state");
-        if (emptyState) {
-          fileListContainer.innerHTML = "";
-        }
-
-        const existingEl = document.getElementById(`file-${file.name}`);
-        if (existingEl) return;
-
-        const { data: urlData } = supabase.storage
-          .from(BUCKET_NAME)
-          .getPublicUrl(file.name);
-
-        const downloadUrl = urlData ? urlData.publicUrl : "#";
-        const iconName = getFileIcon(file.name);
-        const fileSize = file.metadata
-          ? formatBytes(file.metadata.size)
-          : "Unknown size";
-        const createdAt = formatDate(file.created_at);
-
-        const fileItem = document.createElement("div");
-        fileItem.id = `file-${file.name}`;
-        fileItem.className = `file-item ${isNew ? "new-file" : ""}`;
-        fileItem.innerHTML = `
-                                <div class="file-item-left">
-                                  <div class="file-icon-box">
-                                    <i data-lucide="${iconName}" style="width: 18px; height: 18px;"></i>
-                                  </div>
-                                  <div style="overflow: hidden;">
-                                    <div class="file-item-title" title="${file.name}">${file.name}</div>
-                                    <div class="file-item-meta">
-                                      <span>${fileSize}</span>
-                                      <span>&bull;</span>
-                                      <span>${createdAt}</span>
-                                    </div>
-                                  </div>
-                                </div>
-                                <div class="file-item-actions">
-                                  <a href="${downloadUrl}" download="${file.name}" target="_blank" rel="noopener noreferrer" class="btn-download" title="Download ${file.name}">
-                                    <i data-lucide="download" style="width: 14px; height: 14px;"></i>
-                                    <span>Download</span>
-                                  </a>
-                                </div>
-                              `;
-
-        if (isNew) {
-          fileListContainer.prepend(fileItem);
-        } else {
-          fileListContainer.appendChild(fileItem);
-        }
-        lucide.createIcons();
-      }
-
-      async function fetchFiles(showSpin = true) {
-        if (!isUnlocked) return;
-        if (!supabase) return;
-
-        if (showSpin) btnRefresh.classList.add("spinning");
-
-        try {
-          const { data, error } = await supabase.storage
-            .from(BUCKET_NAME)
-            .list("", {
-              limit: 100,
-              offset: 0,
-              sortBy: { column: "created_at", order: "desc" },
-            });
-
-          if (error) throw error;
-
-          setupHelperCard.classList.remove("active");
-
-          const files = (data || []).filter(
-            (item) => item.name && item.name !== ".emptyFolderPlaceholder",
-          );
-
-          if (files.length === 0) {
-            fileListContainer.innerHTML = `
-                                    <div class="empty-state">
-                                      <i data-lucide="inbox"></i>
-                                      <p>No files uploaded yet in "<strong>${BUCKET_NAME}</strong>".</p>
-                                    </div>
-                                  `;
-          } else {
-            const currentNames = files.map((f) => f.name).join(",");
-            const prevNames = Array.from(knownFilesMap.keys()).join(",");
-
-            if (
-              currentNames !== prevNames ||
-              fileListContainer.querySelector(".empty-state")
-            ) {
-              fileListContainer.innerHTML = "";
-              knownFilesMap.clear();
-
-              files.forEach((file) => {
-                knownFilesMap.set(file.name, file);
-                renderSingleFile(file);
-              });
-            }
-          }
-        } catch (err) {
-          console.error("Fetch Error:", err);
-          const msg = err.message || "";
-          if (
-            msg.includes("Bucket not found") ||
-            msg.includes("NoSuchBucket")
-          ) {
-            setupHelperCard.classList.add("active");
-            setupHelperMsg.innerHTML = `Bucket <code>${BUCKET_NAME}</code> does not exist in your Supabase project. Run the SQL script below to create it.`;
-          }
-          fileListContainer.innerHTML = `
-                                  <div class="empty-state">
-                                    <i data-lucide="shield-alert" style="color: var(--danger);"></i>
-                                    <p style="color: #fca5a5;">${err.message || "Failed to list files. Check bucket & RLS."}</p>
-                                  </div>
-                                `;
-        } finally {
-          if (showSpin) {
-            setTimeout(() => {
-              btnRefresh.classList.remove("spinning");
-            }, 300);
-          }
-          lucide.createIcons();
-        }
-      }
-
-      btnRefresh.addEventListener("click", () => fetchFiles(true));
-
-      window.addEventListener("DOMContentLoaded", () => {
-        lucide.createIcons();
-        pinInput.value = "1234";
-        setUnlockedState(true);
-        fetchFiles(true);
-      });
-    </script>
-  </body>
-=======
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DocSync — Instant Document Sync (Web to Android)</title>
-    <meta name="description" content="Send documents, videos, and files up to 50MB seamlessly from your web browser to any paired Android device in real-time.">
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DocSync — High-Speed Realtime Document Sync (Web to Android)</title>
+    <meta name="description" content="Send documents, videos, and files up to 50MB seamlessly from your web browser to any paired Android device in real-time with zero friction.">
+    <meta name="theme-color" content="#060913">
+
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- Supabase JS Client v2 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1477,32 +19,39 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- Ambient Background Glows -->
-    <div class="glow-sphere sphere-1"></div>
-    <div class="glow-sphere sphere-2"></div>
-    <div class="glow-sphere sphere-3"></div>
+    <!-- Ambient Background Lighting & Mesh Glows -->
+    <div class="ambient-glow glow-sphere sphere-1" aria-hidden="true"></div>
+    <div class="ambient-glow glow-sphere sphere-2" aria-hidden="true"></div>
+    <div class="ambient-glow glow-sphere sphere-3" aria-hidden="true"></div>
+    <div class="grid-overlay" aria-hidden="true"></div>
 
     <div class="app-wrapper">
-        <!-- Top Navigation -->
+        <!-- Top Navigation Bar -->
         <header class="app-header">
             <div class="brand">
-                <div class="brand-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
-                        <polyline points="13 2 13 9 20 9"></polyline>
-                        <path d="M9 15h6"></path>
-                        <path d="M12 12v6"></path>
-                    </svg>
+                <div class="brand-icon-wrapper">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                            <polyline points="13 2 13 9 20 9"></polyline>
+                            <path d="M9 15h6"></path>
+                            <path d="M12 12v6"></path>
+                        </svg>
+                    </div>
+                    <div class="brand-pulse-ring" aria-hidden="true"></div>
                 </div>
                 <div class="brand-text">
-                    <h1>Doc<span>Sync</span></h1>
-                    <span class="badge">Realtime Web-to-Device</span>
+                    <h1>Doc<span class="gradient-text">Sync</span></h1>
+                    <span class="badge-pill">
+                        <span class="live-dot" aria-hidden="true"></span>
+                        Realtime Sync
+                    </span>
                 </div>
             </div>
 
             <div class="header-actions">
-                <button id="config-btn" class="icon-btn" title="Configure Supabase Credentials" aria-label="Settings">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <button id="config-btn" class="icon-btn" title="Configure Supabase Credentials" aria-label="Open Supabase Configuration">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <circle cx="12" cy="12" r="3"></circle>
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
                     </svg>
@@ -1511,20 +60,25 @@
             </div>
         </header>
 
-        <!-- Main Card Component -->
-        <main class="main-card">
+        <!-- Main Glassmorphic Transfer Card -->
+        <main class="main-card glass-panel" id="transfer-card">
             <div class="card-hero">
+                <div class="hero-chip">Instant P2P Sync</div>
                 <h2>Transfer Document to Android</h2>
-                <p>Enter the 6-digit sync code displayed on your Android app, pick a file up to 50MB, and hit Send.</p>
+                <p>Enter the 6-digit sync code displayed on your Android phone, choose any file up to 50MB, and hit Send.</p>
             </div>
 
             <form id="sync-form" class="sync-form" autocomplete="off">
                 <!-- Step 1: 6-Digit Code Input -->
                 <div class="input-section">
-                    <label for="code-input" class="section-label">
-                        <span class="step-badge">1</span>
-                        <span>Enter 6-Digit Pairing Code</span>
-                    </label>
+                    <div class="section-label-row">
+                        <label for="code-input" class="section-label">
+                            <span class="step-badge">1</span>
+                            <span>Enter 6-Digit Pairing Code</span>
+                        </label>
+                        <span class="code-helper-text">Check your Android screen</span>
+                    </div>
+
                     <div class="code-input-wrapper">
                         <input 
                             type="text" 
@@ -1534,6 +88,7 @@
                             pattern="\d{6}" 
                             inputmode="numeric" 
                             autocomplete="one-time-code" 
+                            aria-label="6-Digit Pairing Code"
                             required
                         >
                         <div class="code-indicator" id="code-status">
@@ -1544,40 +99,62 @@
 
                 <!-- Step 2: File Upload Zone -->
                 <div class="input-section">
-                    <label class="section-label">
-                        <span class="step-badge">2</span>
-                        <span>Select Document or File (Max 50MB)</span>
-                    </label>
-                    <div class="drop-zone" id="drop-zone">
+                    <div class="section-label-row">
+                        <label class="section-label" for="file-input">
+                            <span class="step-badge">2</span>
+                            <span>Select Document or File (Max 50MB)</span>
+                        </label>
+                    </div>
+
+                    <div class="drop-zone" id="drop-zone" tabindex="0" role="button" aria-label="Drop file here or click to browse">
                         <input type="file" id="file-input" class="file-input" required>
+                        
+                        <!-- Drag Glow Backdrop & Ripple -->
+                        <div class="drop-zone-glow" aria-hidden="true"></div>
+
                         <div class="drop-zone-content" id="drop-zone-empty">
-                            <div class="drop-icon">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
+                            <div class="drop-icon-container">
+                                <div class="drop-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <div class="drop-icon-ring" aria-hidden="true"></div>
                             </div>
-                            <p class="drop-title">Drag and drop file here, or <span>browse</span></p>
+                            
+                            <p class="drop-title">Drag & drop your file here, or <span class="browse-link">browse</span></p>
                             <span class="drop-hint">Supports PDF, DOCX, ZIP, MP4, APK, Images & more (Up to 50 MB)</span>
+
+                            <div class="supported-formats-pills" aria-hidden="true">
+                                <span class="format-pill">PDF</span>
+                                <span class="format-pill">DOCX</span>
+                                <span class="format-pill">ZIP</span>
+                                <span class="format-pill">IMAGES</span>
+                                <span class="format-pill">APK</span>
+                            </div>
                         </div>
 
                         <!-- Selected File Preview Card -->
                         <div class="selected-file-preview hidden" id="file-preview">
                             <div class="file-info-left">
                                 <div class="file-type-icon" id="file-type-icon">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                                         <polyline points="14 2 14 8 20 8"></polyline>
                                     </svg>
                                 </div>
                                 <div class="file-details">
                                     <span class="file-name" id="file-name">filename.pdf</span>
-                                    <span class="file-size" id="file-size">0.00 MB</span>
+                                    <div class="file-meta-row">
+                                        <span class="file-size" id="file-size">0.00 MB</span>
+                                        <span class="file-status-tag">Ready to sync</span>
+                                    </div>
                                 </div>
                             </div>
-                            <button type="button" id="remove-file-btn" class="remove-btn" title="Remove file">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <button type="button" id="remove-file-btn" class="remove-btn" title="Remove file" aria-label="Remove selected file">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                                     <line x1="18" y1="6" x2="6" y2="18"></line>
                                     <line x1="6" y1="6" x2="18" y2="6"></line>
                                 </svg>
@@ -1586,75 +163,91 @@
                     </div>
                 </div>
 
-                <!-- Upload Progress & Status -->
+                <!-- Upload Progress & Shimmer Bar -->
                 <div class="progress-section hidden" id="progress-section">
                     <div class="progress-header">
                         <span class="progress-status" id="progress-status">Uploading to Supabase Storage...</span>
                         <span class="progress-percent" id="progress-percent">0%</span>
                     </div>
                     <div class="progress-track">
-                        <div class="progress-bar" id="progress-bar"></div>
+                        <div class="progress-bar" id="progress-bar">
+                            <div class="progress-shimmer" aria-hidden="true"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Feedback Banner -->
-                <div class="banner hidden" id="status-banner">
-                    <div class="banner-icon" id="banner-icon"></div>
+                <!-- Feedback Status Banner -->
+                <div class="banner hidden" id="status-banner" role="alert">
+                    <div class="banner-icon-box" id="banner-icon" aria-hidden="true"></div>
                     <div class="banner-message" id="banner-message"></div>
                 </div>
 
-                <!-- Submit Button -->
+                <!-- Submit Action Button -->
                 <button type="submit" id="submit-btn" class="primary-btn">
                     <span class="btn-text">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="send-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="send-icon" aria-hidden="true">
                             <line x1="22" y1="2" x2="11" y2="13"></line>
                             <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
                         </svg>
-                        Send to Android
+                        <span>Send to Android</span>
                     </span>
-                    <span class="btn-spinner hidden" id="btn-spinner"></span>
+                    <span class="btn-spinner hidden" id="btn-spinner" aria-hidden="true"></span>
                 </button>
             </form>
         </main>
 
-        <!-- Instructions & Features Footer -->
+        <!-- Feature Highlights Info Grid -->
         <section class="info-grid">
-            <div class="info-card">
-                <div class="info-icon">⚡</div>
+            <div class="info-card glass-panel">
+                <div class="info-icon-wrapper">
+                    <div class="info-icon">⚡</div>
+                </div>
                 <h3>Real-Time Pairing</h3>
                 <p>Instant trigger using Supabase Postgres CDC Realtime subscriptions.</p>
             </div>
-            <div class="info-card">
-                <div class="info-icon">📦</div>
-                <h3>Up to 50MB</h3>
-                <p>Supports large PDFs, APKs, videos, and archives directly to native storage.</p>
+            <div class="info-card glass-panel">
+                <div class="info-icon-wrapper">
+                    <div class="info-icon">📦</div>
+                </div>
+                <h3>Up to 50MB Files</h3>
+                <p>Supports PDFs, APKs, videos, and archives directly into device storage.</p>
             </div>
-            <div class="info-card">
-                <div class="info-icon">📲</div>
+            <div class="info-card glass-panel">
+                <div class="info-icon-wrapper">
+                    <div class="info-icon">📲</div>
+                </div>
                 <h3>Native Downloads</h3>
-                <p>Android DownloadManager saves files directly to the public Downloads directory.</p>
+                <p>Android DownloadManager automatically saves files into Downloads.</p>
             </div>
         </section>
     </div>
 
     <!-- Supabase Configuration Modal -->
-    <div class="modal-overlay hidden" id="config-modal">
-        <div class="modal-box">
+    <div class="modal-overlay hidden" id="config-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-box glass-panel">
             <div class="modal-header">
-                <h3>Supabase Configuration</h3>
-                <button type="button" id="close-modal-btn" class="close-btn">&times;</button>
+                <div class="modal-title-row">
+                    <div class="modal-icon-badge">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </div>
+                    <h3 id="modal-title">Supabase Configuration</h3>
+                </div>
+                <button type="button" id="close-modal-btn" class="close-btn" aria-label="Close settings modal">&times;</button>
             </div>
             <div class="modal-body">
-                <p class="modal-desc">Enter your Supabase project credentials. These are stored locally in your browser for instant testing.</p>
+                <p class="modal-desc">Configure your Supabase project credentials for real-time document synchronization. Settings are saved locally in your browser storage.</p>
                 
                 <div class="form-group">
                     <label for="cfg-url">Supabase Project URL</label>
-                    <input type="url" id="cfg-url" placeholder="https://your-project-id.supabase.co" required>
+                    <input type="url" id="cfg-url" placeholder="https://your-project-id.supabase.co" autocomplete="off" spellcheck="false" required>
                 </div>
                 
                 <div class="form-group">
                     <label for="cfg-key">Supabase Anon Public Key</label>
-                    <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." required>
+                    <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6..." autocomplete="off" spellcheck="false" required>
                 </div>
 
                 <div class="modal-actions">
@@ -1667,5 +260,4 @@
     <!-- Application Script -->
     <script src="app.js"></script>
 </body>
->>>>>>> f6ab07b0b5bb6ddd36a3c5a25af6834c9a209ac7
 </html>

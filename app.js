@@ -1,10 +1,11 @@
 /**
  * ==============================================================================
  * DocSync — Web Application Controller (Supabase JS v2)
+ * Theme: Deep Midnight Blue / Indigo & Violet Glow
  * ==============================================================================
  */
 
-// 1. Default Supabase Credentials (replace with your project credentials or use the in-app Config modal)
+// 1. Default Supabase Credentials
 const DEFAULT_SUPABASE_URL = "https://zqiozemfwidrlpksxbza.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxaW96ZW1md2lkcmxwa3N4YnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODQ1MzUsImV4cCI6MjEwNDM2MDUzNX0.p50TkFOysj6nKy1xbaQWwuV-SirkAhdL_EzqGs_rcZk";
 
@@ -17,6 +18,7 @@ const TABLE_NAME = "sync_sessions";
 let supabaseClient = null;
 let selectedFile = null;
 let isUploading = false;
+let dragCounter = 0;
 
 // DOM Elements
 const syncForm = document.getElementById("sync-form");
@@ -28,6 +30,7 @@ const dropZoneEmpty = document.getElementById("drop-zone-empty");
 const filePreview = document.getElementById("file-preview");
 const fileNameEl = document.getElementById("file-name");
 const fileSizeEl = document.getElementById("file-size");
+const fileTypeIconEl = document.getElementById("file-type-icon");
 const removeFileBtn = document.getElementById("remove-file-btn");
 const submitBtn = document.getElementById("submit-btn");
 const btnSpinner = document.getElementById("btn-spinner");
@@ -37,6 +40,7 @@ const progressStatus = document.getElementById("progress-status");
 const progressPercent = document.getElementById("progress-percent");
 const statusBanner = document.getElementById("status-banner");
 const bannerMessage = document.getElementById("banner-message");
+const bannerIcon = document.getElementById("banner-icon");
 
 // Config Modal Elements
 const configBtn = document.getElementById("config-btn");
@@ -53,8 +57,8 @@ function initSupabase() {
     const savedUrl = localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
     const savedKey = localStorage.getItem("docsync_supabase_key") || DEFAULT_SUPABASE_ANON_KEY;
 
-    cfgUrlInput.value = savedUrl !== DEFAULT_SUPABASE_URL ? savedUrl : "";
-    cfgKeyInput.value = savedKey !== DEFAULT_SUPABASE_ANON_KEY ? savedKey : "";
+    if (cfgUrlInput) cfgUrlInput.value = savedUrl !== DEFAULT_SUPABASE_URL ? savedUrl : "";
+    if (cfgKeyInput) cfgKeyInput.value = savedKey !== DEFAULT_SUPABASE_ANON_KEY ? savedKey : "";
 
     try {
         if (window.supabase && savedUrl && savedKey) {
@@ -81,11 +85,84 @@ function formatBytes(bytes, decimals = 2) {
 }
 
 /**
+ * Return tailored SVG icon based on file extension
+ */
+function getFileIconSvg(fileName) {
+    const ext = fileName.split(".").pop().toLowerCase();
+    
+    // PDF
+    if (ext === "pdf") {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="9" y1="13" x2="15" y2="13"></line>
+            <line x1="9" y1="17" x2="13" y2="17"></line>
+        </svg>`;
+    }
+    
+    // Images
+    if (["jpg", "jpeg", "png", "webp", "svg", "gif", "avif"].includes(ext)) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+        </svg>`;
+    }
+    
+    // Videos
+    if (["mp4", "mkv", "mov", "webm", "avi"].includes(ext)) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="23 7 16 12 23 17 23 7"></polygon>
+            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+        </svg>`;
+    }
+    
+    // Audio
+    if (["mp3", "wav", "flac", "m4a", "ogg", "aac"].includes(ext)) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 18V5l12-2v13"></path>
+            <circle cx="6" cy="18" r="3"></circle>
+            <circle cx="18" cy="16" r="3"></circle>
+        </svg>`;
+    }
+    
+    // Archives & Packages (ZIP, APK, TAR, RAR, 7Z)
+    if (["zip", "apk", "rar", "7z", "tar", "gz"].includes(ext)) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>`;
+    }
+    
+    // Code & Markup
+    if (["html", "css", "js", "ts", "json", "kt", "py", "cpp", "java", "sql", "xml"].includes(ext)) {
+        return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>`;
+    }
+
+    // Default Document
+    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+        <polyline points="14 2 14 8 20 8"></polyline>
+    </svg>`;
+}
+
+/**
  * Show / Hide Status Banner
  */
 function showBanner(message, type = "success") {
     statusBanner.className = `banner ${type}`;
     bannerMessage.textContent = message;
+    
+    if (bannerIcon) {
+        bannerIcon.innerHTML = type === "success" 
+            ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
+            : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+    }
+    
     statusBanner.classList.remove("hidden");
 }
 
@@ -138,6 +215,9 @@ function handleFile(file) {
     selectedFile = file;
     fileNameEl.textContent = file.name;
     fileSizeEl.textContent = formatBytes(file.size);
+    if (fileTypeIconEl) {
+        fileTypeIconEl.innerHTML = getFileIconSvg(file.name);
+    }
     dropZoneEmpty.classList.add("hidden");
     filePreview.classList.remove("hidden");
 }
@@ -146,44 +226,62 @@ function handleFile(file) {
  * Event Listeners: 6-Digit Code Input
  */
 codeInput.addEventListener("input", (e) => {
-    // Only permit digits
+    // Only permit numeric digits
     const cleaned = e.target.value.replace(/\D/g, "").slice(0, 6);
     e.target.value = cleaned;
 
     const count = cleaned.length;
-    codeStatus.querySelector(".digit-count").textContent = `${count}/6 digits`;
+    const digitCountEl = codeStatus.querySelector(".digit-count");
+    if (digitCountEl) {
+        digitCountEl.textContent = `${count}/6 digits`;
+    }
 
     if (count === 6) {
-        codeInput.style.borderColor = "var(--success)";
+        codeStatus.classList.add("valid");
+        codeInput.style.borderColor = "var(--accent-emerald)";
     } else {
+        codeStatus.classList.remove("valid");
         codeInput.style.borderColor = "";
     }
 });
 
 /**
- * Event Listeners: Drag & Drop
+ * Event Listeners: Drag & Drop with Drag Counter Tracking
  */
-["dragenter", "dragover"].forEach((eventName) => {
-    dropZone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        dropZone.classList.add("dragover");
-    });
+dropZone.addEventListener("dragenter", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter++;
+    dropZone.classList.add("dragover");
 });
 
-["dragleave", "drop"].forEach((eventName) => {
-    dropZone.addEventListener(eventName, (e) => {
-        e.preventDefault();
-        e.stopPropagation();
+dropZone.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!dropZone.classList.contains("dragover")) {
+        dropZone.classList.add("dragover");
+    }
+});
+
+dropZone.addEventListener("dragleave", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter--;
+    if (dragCounter <= 0) {
+        dragCounter = 0;
         dropZone.classList.remove("dragover");
-    });
+    }
 });
 
 dropZone.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounter = 0;
+    dropZone.classList.remove("dragover");
+
     const dt = e.dataTransfer;
-    const files = dt.files;
-    if (files.length > 0) {
-        handleFile(files[0]);
+    if (dt && dt.files && dt.files.length > 0) {
+        handleFile(dt.files[0]);
     }
 });
 
@@ -208,13 +306,13 @@ syncForm.addEventListener("submit", async (e) => {
 
     const code = codeInput.value.trim();
     if (code.length !== 6) {
-        showBanner("Please enter a valid 6-digit sync code.", "error");
+        showBanner("Please enter a valid 6-digit sync pairing code.", "error");
         codeInput.focus();
         return;
     }
 
     if (!selectedFile) {
-        showBanner("Please select a file to transfer.", "error");
+        showBanner("Please select a file or document to transfer.", "error");
         return;
     }
 
@@ -234,8 +332,7 @@ syncForm.addEventListener("submit", async (e) => {
         hideBanner();
 
         // 1. Prepare File Path & Upload
-        updateProgress(20, "Uploading file to Supabase Storage...");
-        const fileExt = selectedFile.name.split(".").pop();
+        updateProgress(25, "Uploading file to Supabase Storage...");
         const cleanName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
         const uniquePath = `sync_${code}_${Date.now()}_${cleanName}`;
 
@@ -262,9 +359,9 @@ syncForm.addEventListener("submit", async (e) => {
             throw new Error("Failed to retrieve public URL for uploaded file.");
         }
 
-        updateProgress(85, "Broadcasting sync session to Android device...");
+        updateProgress(88, "Broadcasting sync session to Android device...");
 
-        // 3. Insert record into sync_sessions table
+        // 3. Insert record into sync_sessions table (triggers Android Realtime listener)
         const { error: insertError } = await supabaseClient
             .from(TABLE_NAME)
             .insert([
@@ -283,7 +380,7 @@ syncForm.addEventListener("submit", async (e) => {
         // 4. Complete
         updateProgress(100, "Transferred successfully!");
         showBanner(
-            `🚀 "${selectedFile.name}" successfully sent to Android device (${code})! Download has started.`,
+            `🚀 "${selectedFile.name}" successfully sent to paired Android device (${code})! Download has started automatically.`,
             "success"
         );
 
@@ -303,7 +400,7 @@ syncForm.addEventListener("submit", async (e) => {
             if (!isUploading) {
                 progressSection.classList.add("hidden");
             }
-        }, 3000);
+        }, 3500);
     }
 });
 
