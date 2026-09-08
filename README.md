@@ -46,17 +46,6 @@ Simply generate a 6-digit pairing code on your Android device, enter it into the
 
 ---
 
-## 📸 Screenshots
-
-*(Add screenshots of your project here to make the README pop!)*
-
-<div align="center">
-  <img src="LINK_TO_YOUR_WEB_SCREENSHOT.png" alt="Web Portal" width="45%">
-  &nbsp; &nbsp; &nbsp;
-  <img src="LINK_TO_YOUR_MOBILE_SCREENSHOT.jpg" alt="Android App" width="22%">
-</div>
-
----
 
 ## 💡 How It Works
 
