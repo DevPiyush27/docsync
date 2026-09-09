@@ -104,6 +104,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// Add the WorkManager imports here:
+import androidx.work.Constraints
+import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
@@ -220,6 +225,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        // 🚀 Initialize and queue the background worker instantly when the app opens!
+        val networkConstraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+
+        val syncRequest = OneTimeWorkRequestBuilder<OfflineSyncWorker>()
+            .setConstraints(networkConstraints)
+            .build()
+
+        WorkManager.getInstance(this).enqueue(syncRequest)
+        // 🚀 End of WorkManager initialization
+
         setContent {
             DocSyncTheme {
                 Surface(
@@ -333,9 +351,9 @@ fun DocSyncApp() {
                             )
                         }
                         val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
-                        
+
                         syncStatus = SyncStatus.TransferReceived(fileName)
-                        
+
                         // Native DownloadManager download
                         enqueueDownload(context, session.downloadUrl, fileName)
 
