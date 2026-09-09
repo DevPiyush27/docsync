@@ -25,11 +25,11 @@ MERGED from [androidx.activity:activity-ktx:1.9.3] C:\Users\piyus\.gradle\caches
 MERGED from [androidx.activity:activity-compose:1.9.3] C:\Users\piyus\.gradle\caches\8.10.2\transforms\75e2eea2087a6fb7e4b4a3c1b57a8a5b\transformed\jetified-activity-compose-1.9.3\AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\1ead57bb9c3630e0b7298445c319ecb4\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\b343fdbf4fef9bc2d6c29c8680fb3452\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:17:1-22:12
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:17:1-35:12
 MERGED from [io.github.jan-tennert.supabase:realtime-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\f0b7b2277f990790445e2a8b12ff09c1\transformed\jetified-realtime-kt-debug\AndroidManifest.xml:2:1-7:12
 MERGED from [io.github.jan-tennert.supabase:postgrest-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\9ce904029713d98f69ee446e8d7bf369\transformed\jetified-postgrest-kt-debug\AndroidManifest.xml:2:1-7:12
 MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:2:1-20:12
 MERGED from [io.github.jan-tennert.supabase:supabase-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\d137537db573c76cd4c8086cf096c352\transformed\jetified-supabase-kt-debug\AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:17:1-35:12
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:17:1-35:12
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\c0459f29a472705a5f5d21f5b7e7c2b8\transformed\lifecycle-livedata-core-2.8.7\AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.lifecycle:lifecycle-viewmodel-android:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\d29268884e493bb7e95d2af42e5e7957\transformed\jetified-lifecycle-viewmodel-release\AndroidManifest.xml:17:1-22:12
@@ -81,10 +81,10 @@ MERGED from [androidx.compose.ui:ui-tooling-android:1.7.6] C:\Users\piyus\.gradl
 MERGED from [androidx.compose.ui:ui-tooling-android:1.7.6] C:\Users\piyus\.gradle\caches\8.10.2\transforms\1e2820b4e04b84406125371fc54db74d\transformed\jetified-ui-tooling-release\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-test-manifest:1.7.6] C:\Users\piyus\.gradle\caches\8.10.2\transforms\6e61b310b10b7e96711259037427aad3\transformed\jetified-ui-test-manifest-1.7.6\AndroidManifest.xml:22:5-26:19
 MERGED from [androidx.compose.ui:ui-test-manifest:1.7.6] C:\Users\piyus\.gradle\caches\8.10.2\transforms\6e61b310b10b7e96711259037427aad3\transformed\jetified-ui-test-manifest-1.7.6\AndroidManifest.xml:22:5-26:19
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:8:5-18:19
 MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:8:5-18:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:23:5-33:19
 MERGED from [androidx.core:core:1.15.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\f6f41b1dab0ffcbd7c540c972f755efd\transformed\core-1.15.0\AndroidManifest.xml:28:5-89
@@ -175,8 +175,6 @@ MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\piyus\.gradle\ca
 MERGED from [androidx.savedstate:savedstate-ktx:1.2.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\1ead57bb9c3630e0b7298445c319ecb4\transformed\jetified-savedstate-ktx-1.2.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\b343fdbf4fef9bc2d6c29c8680fb3452\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
 MERGED from [androidx.savedstate:savedstate:1.2.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\b343fdbf4fef9bc2d6c29c8680fb3452\transformed\jetified-savedstate-1.2.1\AndroidManifest.xml:20:5-44
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
-MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
 MERGED from [io.github.jan-tennert.supabase:realtime-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\f0b7b2277f990790445e2a8b12ff09c1\transformed\jetified-realtime-kt-debug\AndroidManifest.xml:5:5-44
 MERGED from [io.github.jan-tennert.supabase:realtime-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\f0b7b2277f990790445e2a8b12ff09c1\transformed\jetified-realtime-kt-debug\AndroidManifest.xml:5:5-44
 MERGED from [io.github.jan-tennert.supabase:postgrest-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\9ce904029713d98f69ee446e8d7bf369\transformed\jetified-postgrest-kt-debug\AndroidManifest.xml:5:5-44
@@ -185,6 +183,8 @@ MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\User
 MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:6:5-44
 MERGED from [io.github.jan-tennert.supabase:supabase-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\d137537db573c76cd4c8086cf096c352\transformed\jetified-supabase-kt-debug\AndroidManifest.xml:5:5-44
 MERGED from [io.github.jan-tennert.supabase:supabase-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\d137537db573c76cd4c8086cf096c352\transformed\jetified-supabase-kt-debug\AndroidManifest.xml:5:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:21:5-44
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:21:5-44
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:21:5-44
 MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\c0459f29a472705a5f5d21f5b7e7c2b8\transformed\lifecycle-livedata-core-2.8.7\AndroidManifest.xml:20:5-44
@@ -266,9 +266,9 @@ ADDED from [androidx.compose.ui:ui-test-manifest:1.7.6] C:\Users\piyus\.gradle\c
 	android:name
 		ADDED from [androidx.compose.ui:ui-test-manifest:1.7.6] C:\Users\piyus\.gradle\caches\8.10.2\transforms\6e61b310b10b7e96711259037427aad3\transformed\jetified-ui-test-manifest-1.7.6\AndroidManifest.xml:24:13-63
 provider#androidx.startup.InitializationProvider
-ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
-MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:9:9-17:20
-MERGED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:9:9-17:20
+ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:9:9-17:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
+MERGED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:24:9-32:20
 MERGED from [androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\7e6cb22f9dcb3837977e22c830d2aab0\transformed\jetified-profileinstaller-1.3.1\AndroidManifest.xml:24:9-32:20
@@ -278,25 +278,25 @@ MERGED from [com.russhwolf:multiplatform-settings-no-arg-android-debug:1.3.0] C:
 MERGED from [androidx.startup:startup-runtime:1.2.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\50ff74ca20c2f647c6aa73a42ba0e423\transformed\jetified-startup-runtime-1.2.0\AndroidManifest.xml:24:9-28:34
 MERGED from [androidx.startup:startup-runtime:1.2.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\50ff74ca20c2f647c6aa73a42ba0e423\transformed\jetified-startup-runtime-1.2.0\AndroidManifest.xml:24:9-28:34
 	tools:node
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:28:13-31
+		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:13:13-31
 	android:authorities
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:26:13-68
+		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:11:13-68
 	android:exported
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:27:13-37
+		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:12:13-37
 	android:name
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:25:13-67
-meta-data#androidx.emoji2.text.EmojiCompatInitializer
-ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
-	android:value
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:31:17-49
-	android:name
-		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:30:17-75
+		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:10:13-67
 meta-data#io.github.jan.supabase.auth.SupabaseInitializer
 ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:14:13-16:52
 	android:value
 		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:16:17-49
 	android:name
 		ADDED from [io.github.jan-tennert.supabase:auth-kt-android-debug:3.1.1] C:\Users\piyus\.gradle\caches\8.10.2\transforms\4b1539ea3d2c63203256066de983483d\transformed\jetified-auth-kt-debug\AndroidManifest.xml:15:17-79
+meta-data#androidx.emoji2.text.EmojiCompatInitializer
+ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:29:13-31:52
+	android:value
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:31:17-49
+	android:name
+		ADDED from [androidx.emoji2:emoji2:1.3.0] C:\Users\piyus\.gradle\caches\8.10.2\transforms\a27efd7af87f5203e1d70c0aea29c6b7\transformed\jetified-emoji2-1.3.0\AndroidManifest.xml:30:17-75
 meta-data#androidx.lifecycle.ProcessLifecycleInitializer
 ADDED from [androidx.lifecycle:lifecycle-process:2.8.7] C:\Users\piyus\.gradle\caches\8.10.2\transforms\63b86ae4597b50ca0a648b5773cc3398\transformed\jetified-lifecycle-process-2.8.7\AndroidManifest.xml:29:13-31:52
 	android:value
