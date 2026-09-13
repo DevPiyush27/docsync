@@ -36,8 +36,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -71,6 +69,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -82,7 +83,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -104,30 +104,28 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-// Add the WorkManager imports here:
 import androidx.work.Constraints
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.query.filter.FilterOperation
 import io.github.jan.supabase.postgrest.query.filter.FilterOperator
 import io.github.jan.supabase.realtime.PostgresAction
-import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.channel
 import io.github.jan.supabase.realtime.postgresChangeFlow
 import io.github.jan.supabase.realtime.realtime
+import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -140,6 +138,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlin.random.Random
+import kotlin.time.Duration.Companion.hours
 
 // ==============================================================================
 // 1. Data Models
@@ -160,15 +159,6 @@ data class SyncSession(
     val createdAt: String? = null
 )
 
-data class DownloadHistoryItem(
-    val id: String = UUID.randomUUID().toString(),
-    val fileName: String,
-    val downloadUrl: String,
-    val fileSize: Long? = null,
-    val timestamp: Long = System.currentTimeMillis(),
-    val status: String = "Saved to Downloads"
-)
-
 sealed interface SyncStatus {
     data object Disconnected : SyncStatus
     data object Connecting : SyncStatus
@@ -180,13 +170,6 @@ sealed interface SyncStatus {
 // ==============================================================================
 // 2. Default Configuration Constants & Theme Colors
 // ==============================================================================
-
-private const val PREFS_NAME = "docsync_prefs"
-private const val KEY_SUPABASE_URL = "supabase_url"
-private const val KEY_SUPABASE_KEY = "supabase_anon_key"
-
-private const val DEFAULT_SUPABASE_URL = "https://zqiozemfwidrlpksxbza.supabase.co"
-private const val DEFAULT_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxaW96ZW1md2lkcmxwa3N4YnphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg3ODQ1MzUsImV4cCI6MjEwNDM2MDUzNX0.p50TkFOysj6nKy1xbaQWwuV-SirkAhdL_EzqGs_rcZk"
 
 private val json = Json {
     ignoreUnknownKeys = true
@@ -226,7 +209,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        // 🚀 Initialize and queue the background worker instantly when the app opens!
         val networkConstraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -235,8 +217,11 @@ class MainActivity : ComponentActivity() {
             .setConstraints(networkConstraints)
             .build()
 
-        WorkManager.getInstance(this).enqueue(syncRequest)
-        // 🚀 End of WorkManager initialization
+        WorkManager.getInstance(this).enqueueUniqueWork(
+            "DocSyncQueue",
+            ExistingWorkPolicy.KEEP,
+            syncRequest
+        )
 
         setContent {
             DocSyncTheme {
@@ -260,53 +245,24 @@ class MainActivity : ComponentActivity() {
 fun DocSyncApp() {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val prefs = remember { context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    // Supabase Configuration State
-    var supabaseUrl by remember { mutableStateOf(prefs.getString(KEY_SUPABASE_URL, DEFAULT_SUPABASE_URL) ?: DEFAULT_SUPABASE_URL) }
-    var supabaseAnonKey by remember { mutableStateOf(prefs.getString(KEY_SUPABASE_KEY, DEFAULT_SUPABASE_ANON_KEY) ?: DEFAULT_SUPABASE_ANON_KEY) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
+    val sessionStatus by SupabaseHelper.client.auth.sessionStatus.collectAsState(initial = SessionStatus.Initializing)
 
-    // Supabase Client Instance (includes Auth, Postgrest, Realtime)
-    val supabaseClient = remember(supabaseUrl, supabaseAnonKey) {
-        if (supabaseUrl.isNotBlank() && !supabaseUrl.contains("your-project-ref") && supabaseAnonKey.isNotBlank()) {
-            try {
-                createSupabaseClient(
-                    supabaseUrl = supabaseUrl,
-                    supabaseKey = supabaseAnonKey
-                ) {
-                    install(Auth)
-                    install(Postgrest)
-                    install(Realtime)
-                }
-            } catch (e: Exception) {
-                null
-            }
-        } else {
-            null
-        }
-    }
-
-    // Session Status Flow from Supabase Auth
-    val sessionStatus by (supabaseClient?.auth?.sessionStatus?.collectAsState(initial = SessionStatus.Initializing)
-        ?: remember { mutableStateOf(SessionStatus.NotAuthenticated(false)) })
-
-    // Transfer State
     var currentCode by remember { mutableStateOf(generate6DigitCode()) }
     var syncStatus by remember { mutableStateOf<SyncStatus>(SyncStatus.Disconnected) }
-    val historyItems = remember { mutableStateListOf<DownloadHistoryItem>() }
+    var showSettingsDialog by remember { mutableStateOf(false) }
 
-    // Realtime Listener with proper lifecycle management
-    LaunchedEffect(currentCode, sessionStatus, supabaseClient) {
-        val client = supabaseClient
-        if (client == null || sessionStatus !is SessionStatus.Authenticated) {
+    // THE FIXED LISTENER BLOCK
+    LaunchedEffect(currentCode, sessionStatus) {
+        if (sessionStatus !is SessionStatus.Authenticated) {
             syncStatus = SyncStatus.Disconnected
             return@LaunchedEffect
         }
 
         syncStatus = SyncStatus.Connecting
+        val client = SupabaseHelper.client
 
-        // Clean up any stale channels from previous sessions
         try {
             client.realtime.removeAllChannels()
         } catch (_: Exception) {}
@@ -321,11 +277,15 @@ fun DocSyncApp() {
             }
 
             channel.subscribe()
-            syncStatus = SyncStatus.Listening(currentCode)
+            withContext(Dispatchers.Main) {
+                syncStatus = SyncStatus.Listening(currentCode)
+            }
 
             changeFlow
                 .catch { e ->
-                    syncStatus = SyncStatus.Error("Realtime error: ${e.localizedMessage}")
+                    withContext(Dispatchers.Main) {
+                        syncStatus = SyncStatus.Error("Realtime error: ${e.localizedMessage}")
+                    }
                 }
                 .collect { action ->
                     val record = when (action) {
@@ -352,31 +312,52 @@ fun DocSyncApp() {
                         }
                         val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
 
-                        syncStatus = SyncStatus.TransferReceived(fileName)
+                        withContext(Dispatchers.Main) {
+                            syncStatus = SyncStatus.TransferReceived(fileName)
+                            Toast.makeText(context, "📡 Real-time ping received!", Toast.LENGTH_SHORT).show()
+                        }
 
-                        // Native DownloadManager download
-                        enqueueDownload(context, session.downloadUrl, fileName)
+                        try {
+                            // Extract path safely, removing extra slashes
+                            val cleanPath = session.downloadUrl
+                                .substringAfter("sync_uploads/")
+                                .substringBefore("?")
+                                .trim('/')
 
-                        // Add to history
-                        historyItems.add(
-                            0,
-                            DownloadHistoryItem(
-                                fileName = fileName,
-                                downloadUrl = session.downloadUrl,
-                                fileSize = session.fileSize,
-                                status = "Saved to Downloads"
-                            )
-                        )
+                            val finalUrl = if (cleanPath.startsWith("http")) {
+                                cleanPath
+                            } else {
+                                client.storage["sync_uploads"].createSignedUrl(
+                                    path = cleanPath,
+                                    expiresIn = 5.hours
+                                )
+                            }
 
-                        // Reset status to listening after 4 seconds
+                            withContext(Dispatchers.Main) {
+                                enqueueDownload(context, finalUrl, fileName)
+                            }
+                        } catch (e: Exception) {
+                            withContext(Dispatchers.Main) {
+                                Toast.makeText(context, "❌ Storage Error: ${e.message}", Toast.LENGTH_LONG).show()
+                                // Fallback just in case URL parsing failed but it was a direct link
+                                enqueueDownload(context, session.downloadUrl, fileName)
+                            }
+                        }
+
                         delay(4000)
-                        syncStatus = SyncStatus.Listening(currentCode)
+                        withContext(Dispatchers.Main) {
+                            syncStatus = SyncStatus.Listening(currentCode)
+                        }
                     } catch (ex: Exception) {
-                        syncStatus = SyncStatus.Error("Decode error: ${ex.localizedMessage}")
+                        withContext(Dispatchers.Main) {
+                            syncStatus = SyncStatus.Error("Decode error: ${ex.localizedMessage}")
+                        }
                     }
                 }
         } catch (e: Exception) {
-            syncStatus = SyncStatus.Error("Connection failed: ${e.localizedMessage}")
+            withContext(Dispatchers.Main) {
+                syncStatus = SyncStatus.Error("Connection failed: ${e.localizedMessage}")
+            }
         } finally {
             try {
                 channel.unsubscribe()
@@ -386,11 +367,17 @@ fun DocSyncApp() {
     }
 
     val currentUser: UserInfo? = (sessionStatus as? SessionStatus.Authenticated)?.let {
-        supabaseClient?.auth?.currentUserOrNull()
+        SupabaseHelper.client.auth.currentUserOrNull()
     }
 
     Scaffold(
         containerColor = BgMain,
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(16.dp)
+            )
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -439,12 +426,11 @@ fun DocSyncApp() {
                     }
                 },
                 actions = {
-                    // Sign Out Button (when authenticated)
-                    if (sessionStatus is SessionStatus.Authenticated && supabaseClient != null) {
+                    if (sessionStatus is SessionStatus.Authenticated) {
                         IconButton(
                             onClick = {
                                 coroutineScope.launch {
-                                    supabaseClient.auth.signOut()
+                                    SupabaseHelper.client.auth.signOut()
                                     Toast.makeText(context, "Signed out successfully.", Toast.LENGTH_SHORT).show()
                                 }
                             },
@@ -461,7 +447,6 @@ fun DocSyncApp() {
                         Spacer(modifier = Modifier.width(6.dp))
                     }
 
-                    // Settings Button
                     IconButton(
                         onClick = { showSettingsDialog = true },
                         modifier = Modifier
@@ -490,7 +475,6 @@ fun DocSyncApp() {
         ) {
             when (sessionStatus) {
                 is SessionStatus.Initializing -> {
-                    // Loading State
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
@@ -500,14 +484,12 @@ fun DocSyncApp() {
                 }
 
                 is SessionStatus.Authenticated -> {
-                    // Authenticated Transfer UI
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Hero Pairing Code Card
                         PairingCodeCard(
                             code = currentCode,
                             onCopy = {
@@ -524,76 +506,51 @@ fun DocSyncApp() {
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        // Realtime Connection Status Pill
                         ConnectionStatusBadge(status = syncStatus)
 
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Download Activity Section Header
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Recent Transfers",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFFF8FAFC)
-                            )
-                            if (historyItems.isNotEmpty()) {
-                                Text(
-                                    text = "${historyItems.size} files",
-                                    fontSize = 12.sp,
-                                    color = TextMuted,
-                                    fontFamily = FontFamily.Monospace
+                        RecentTransfersSection(
+                            onShowSnackbar = { message ->
+                                snackbarHostState.showSnackbar(
+                                    message = message,
+                                    duration = SnackbarDuration.Short
                                 )
                             }
-                        }
-
-                        if (historyItems.isEmpty()) {
-                            EmptyStateCard()
-                        } else {
-                            LazyColumn(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                items(historyItems, key = { it.id }) { item ->
-                                    DownloadItemCard(item = item)
-                                }
-                            }
-                        }
+                        )
                     }
                 }
 
                 else -> {
-                    // Unauthenticated: Show Auth Card Screen
-                    AuthCardScreen(
-                        supabaseClient = supabaseClient,
-                        onOpenSettings = { showSettingsDialog = true }
-                    )
+                    AuthCardScreen()
                 }
             }
         }
     }
 
-    // Supabase Configuration Dialog
     if (showSettingsDialog) {
-        SettingsDialog(
-            currentUrl = supabaseUrl,
-            currentKey = supabaseAnonKey,
-            onDismiss = { showSettingsDialog = false },
-            onSave = { newUrl, newKey ->
-                supabaseUrl = newUrl
-                supabaseAnonKey = newKey
-                prefs.edit()
-                    .putString(KEY_SUPABASE_URL, newUrl)
-                    .putString(KEY_SUPABASE_KEY, newKey)
-                    .apply()
-                showSettingsDialog = false
-                Toast.makeText(context, "Supabase settings saved!", Toast.LENGTH_SHORT).show()
+        AlertDialog(
+            onDismissRequest = { showSettingsDialog = false },
+            containerColor = Color(0xFF0F172A),
+            shape = RoundedCornerShape(24.dp),
+            title = {
+                Text("Supabase Configuration", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+            },
+            text = {
+                Text(
+                    text = "Supabase is currently configured globally via SupabaseHelper.kt. To change credentials, modify that file directly and rebuild the app.",
+                    color = TextMuted,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showSettingsDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Got it", color = Color.White, fontWeight = FontWeight.Bold)
+                }
             }
         )
     }
@@ -604,10 +561,7 @@ fun DocSyncApp() {
 // ==============================================================================
 
 @Composable
-fun AuthCardScreen(
-    supabaseClient: SupabaseClient?,
-    onOpenSettings: () -> Unit
-) {
+fun AuthCardScreen() {
     var isLoginMode by remember { mutableStateOf(true) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -636,7 +590,6 @@ fun AuthCardScreen(
                     .padding(24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Chip Badge
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
@@ -670,7 +623,6 @@ fun AuthCardScreen(
                     modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
                 )
 
-                // Tab Selector
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -723,7 +675,6 @@ fun AuthCardScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Email Input
                 OutlinedTextField(
                     value = email,
                     onValueChange = {
@@ -754,7 +705,6 @@ fun AuthCardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Password Input
                 OutlinedTextField(
                     value = password,
                     onValueChange = {
@@ -793,7 +743,6 @@ fun AuthCardScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Error Message Display
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(12.dp))
                     Box(
@@ -815,16 +764,10 @@ fun AuthCardScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Action Button
                 Button(
                     onClick = {
                         val trimmedEmail = email.trim()
                         val trimmedPass = password.trim()
-
-                        if (supabaseClient == null) {
-                            errorMessage = "Supabase credentials are not configured. Tap the Settings icon in the header."
-                            return@Button
-                        }
 
                         if (trimmedEmail.isBlank() || trimmedPass.isBlank()) {
                             errorMessage = "Please provide both email and password."
@@ -842,13 +785,13 @@ fun AuthCardScreen(
                         coroutineScope.launch {
                             try {
                                 if (isLoginMode) {
-                                    supabaseClient.auth.signInWith(Email) {
+                                    SupabaseHelper.client.auth.signInWith(Email) {
                                         this.email = trimmedEmail
                                         this.password = trimmedPass
                                     }
                                     Toast.makeText(context, "Signed in successfully!", Toast.LENGTH_SHORT).show()
                                 } else {
-                                    supabaseClient.auth.signUpWith(Email) {
+                                    SupabaseHelper.client.auth.signUpWith(Email) {
                                         this.email = trimmedEmail
                                         this.password = trimmedPass
                                     }
@@ -915,7 +858,6 @@ fun PairingCodeCard(
                 .padding(22.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Chip Badge
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
@@ -934,7 +876,6 @@ fun PairingCodeCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Formatted 6-Digit Neon Tiles
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -977,7 +918,6 @@ fun PairingCodeCard(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Action Buttons Row
             Row(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1111,221 +1051,6 @@ private data class StatusStyle(
     val dot: Color,
     val label: String
 )
-
-@Composable
-fun DownloadItemCard(item: DownloadHistoryItem) {
-    val formattedTime = remember(item.timestamp) {
-        SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(item.timestamp))
-    }
-
-    val fileIcon = remember(item.fileName) {
-        getFileIconForName(item.fileName)
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, BorderSubtle, RoundedCornerShape(18.dp)),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(AccentGradient),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = fileIcon,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.fileName,
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = SuccessEmerald,
-                        modifier = Modifier.size(13.dp)
-                    )
-                    Text(
-                        text = "${item.status} • $formattedTime",
-                        color = TextMuted,
-                        fontSize = 11.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-        }
-    }
-}
-
-private fun getFileIconForName(fileName: String): ImageVector {
-    val ext = fileName.substringAfterLast('.', "").lowercase()
-    return when (ext) {
-        "pdf" -> Icons.Default.PictureAsPdf
-        "png", "jpg", "jpeg", "webp", "gif", "svg" -> Icons.Default.Image
-        "mp4", "mkv", "mov", "webm", "avi" -> Icons.Default.Videocam
-        "mp3", "wav", "flac", "m4a", "ogg" -> Icons.Default.MusicNote
-        else -> Icons.Default.InsertDriveFile
-    }
-}
-
-@Composable
-fun EmptyStateCard() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, BorderSubtle, RoundedCornerShape(20.dp)),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard.copy(alpha = 0.45f))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(54.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.05f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Folder,
-                    contentDescription = null,
-                    tint = TextMuted,
-                    modifier = Modifier.size(30.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "No transfers yet",
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Files sent from the web app will appear here and download automatically to your public Downloads folder.",
-                color = TextMuted,
-                fontSize = 12.sp,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-        }
-    }
-}
-
-// ==============================================================================
-// 7. Settings Dialog
-// ==============================================================================
-
-@Composable
-fun SettingsDialog(
-    currentUrl: String,
-    currentKey: String,
-    onDismiss: () -> Unit,
-    onSave: (String, String) -> Unit
-) {
-    var urlText by remember { mutableStateOf(currentUrl) }
-    var keyText by remember { mutableStateOf(currentKey) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        containerColor = Color(0xFF0F172A),
-        shape = RoundedCornerShape(24.dp),
-        title = {
-            Text(
-                text = "Supabase Configuration",
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp
-            )
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                Text(
-                    text = "Configure your Supabase project credentials for real-time document synchronization.",
-                    color = TextMuted,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp
-                )
-                OutlinedTextField(
-                    value = urlText,
-                    onValueChange = { urlText = it },
-                    label = { Text("Supabase URL") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryIndigo,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = PrimaryIndigo,
-                        unfocusedLabelColor = TextMuted
-                    ),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(
-                    value = keyText,
-                    onValueChange = { keyText = it },
-                    label = { Text("Supabase Anon Key") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryIndigo,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = PrimaryIndigo,
-                        unfocusedLabelColor = TextMuted
-                    ),
-                    singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onSave(urlText.trim(), keyText.trim()) },
-                colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text("Save", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = TextMuted)
-            }
-        }
-    )
-}
 
 // ==============================================================================
 // 8. Helpers & Native Download Engine

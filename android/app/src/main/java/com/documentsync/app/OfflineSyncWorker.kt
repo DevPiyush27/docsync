@@ -55,6 +55,12 @@ class OfflineSyncWorker(
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
 
             for (file in pendingFiles) {
+                // 1. Immediately update status to PROCESSING so no concurrent worker picks it up
+                SupabaseHelper.client.postgrest["sync_queue"].update(
+                    { set("status", "PROCESSING") }
+                ) { filter { eq("id", file.id) } }
+
+                Log.e("DocSyncWorker", "Status set to PROCESSING for: ${file.file_name}")
                 Log.e("DocSyncWorker", "Generating Signed URL for: ${file.file_name}")
 
                 val signedUrl = SupabaseHelper.client.storage["sync_uploads"].createSignedUrl(file.file_path, 5.hours)
@@ -64,6 +70,8 @@ class OfflineSyncWorker(
                     setDescription("DocSync Offline Transfer")
                     setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, file.file_name)
                     setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    setAllowedOverMetered(true)
+                    setAllowedOverRoaming(true)
                 }
 
                 downloadManager.enqueue(request)
