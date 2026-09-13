@@ -312,6 +312,71 @@ function formatBytes(bytes, decimals = 2) {
 }
 
 /**
+ * Uploads a file with real-time byte progress reporting via XMLHttpRequest.
+ * @param {File} file - The file to upload
+ * @param {string} storagePath - Target storage path in the bucket
+ * @param {string} token - The user's Supabase auth session token
+ * @returns {Promise<any>}
+ */
+async function uploadWithRealProgress(file, storagePath, token) {
+  const currentUrl =
+    localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
+  const currentKey =
+    localStorage.getItem("docsync_supabase_key") || DEFAULT_SUPABASE_ANON_KEY;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(
+      "POST",
+      `${currentUrl}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`
+    );
+
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.setRequestHeader("apikey", currentKey);
+    xhr.setRequestHeader(
+      "Content-Type",
+      file.type || "application/octet-stream"
+    );
+    xhr.setRequestHeader("x-upsert", "true");
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const percent = (e.loaded / e.total) * 100;
+        updateProgress(
+          percent,
+          "Uploading... (" +
+            formatBytes(e.loaded) +
+            " / " +
+            formatBytes(e.total) +
+            ")"
+        );
+      }
+    };
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(xhr.response);
+      } else {
+        let errorMessage = `Storage upload failed with status ${xhr.status}`;
+        try {
+          const parsed = JSON.parse(xhr.responseText);
+          if (parsed.message || parsed.error) {
+            errorMessage = parsed.message || parsed.error;
+          }
+        } catch (_) {}
+        reject(new Error(errorMessage));
+      }
+    };
+
+    xhr.onerror = () => {
+      reject(new Error("Network error occurred during file upload."));
+    };
+
+    xhr.send(file);
+  });
+}
+
+/**
  * Return tailored SVG icon based on file extension
  */
 function getFileIconSvg(fileName) {
@@ -551,19 +616,16 @@ async function uploadAndBroadcastSyncSession(supabase, code, file, userId) {
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filePath = `sync_${code}_${Date.now()}_${cleanName}`;
 
-  // 1. Upload file to Supabase Storage bucket 'sync_uploads'
-  const { error: uploadError } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(filePath, file, {
-      cacheControl: "3600",
-      upsert: true,
-    });
+  // 1. Extract session token
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const token = session ? session.access_token : "";
 
-  if (uploadError) {
-    throw new Error(`Storage upload failed: ${uploadError.message}`);
-  }
+  // 2. Upload file to Supabase Storage bucket 'sync_uploads' with real byte progress
+  await uploadWithRealProgress(file, filePath, token);
 
-  // 2. Generate temporary signed URL (valid for 60 seconds)
+  // 3. Generate temporary signed URL (valid for 60 seconds)
   const { data: signedData, error: signedError } = await supabase.storage
     .from(STORAGE_BUCKET)
     .createSignedUrl(filePath, 60);
@@ -629,7 +691,7 @@ syncForm.addEventListener("submit", async (e) => {
     submitBtn.querySelector(".btn-text").classList.add("hidden");
     hideBanner();
 
-    updateProgress(30, "Uploading file securely to Supabase Storage...");
+    updateProgress(0, "Starting secure upload...");
 
     // Execute upload, signed URL generation, and upsert
     await uploadAndBroadcastSyncSession(
@@ -739,7 +801,7 @@ async function uploadToOfflineQueue() {
     if (sendLaterText) sendLaterText.classList.add("hidden");
     hideBanner();
 
-    updateProgress(25, "Uploading file to storage bucket...");
+    updateProgress(0, "Starting upload to storage bucket...");
 
     // 3. Upload file to Supabase Storage bucket 'sync_uploads'
     const sanitizedFileName = selectedFile.name.replace(
@@ -752,17 +814,12 @@ async function uploadToOfflineQueue() {
       `📤 [DocSync Queue] Step 2: Uploading to bucket 'sync_uploads' at path: "${storagePath}"...`,
     );
 
-    const { error: uploadError } = await supabaseClient.storage
-      .from("sync_uploads")
-      .upload(storagePath, selectedFile, {
-        cacheControl: "3600",
-        upsert: true,
-      });
+    const {
+      data: { session },
+    } = await supabaseClient.auth.getSession();
+    const token = session ? session.access_token : "";
 
-    if (uploadError) {
-      console.error("❌ [DocSync Queue] Storage upload failed:", uploadError);
-      throw new Error(`Storage upload failed: ${uploadError.message}`);
-    }
+    await uploadWithRealProgress(selectedFile, storagePath, token);
 
     console.log("✅ [DocSync Queue] Storage upload successful!");
     updateProgress(65, "Registering entry in 'sync_queue' database table...");
