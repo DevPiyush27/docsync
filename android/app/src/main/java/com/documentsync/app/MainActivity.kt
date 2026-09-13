@@ -311,6 +311,7 @@ fun DocSyncApp() {
                                 userId = rawUserId
                             )
                         }
+                        if (session.downloadUrl.isBlank()) return@collect
                         val fileName = session.fileName ?: "synced_doc_${System.currentTimeMillis()}"
 
                         withContext(Dispatchers.Main) {
@@ -345,9 +346,11 @@ fun DocSyncApp() {
                             }
                         }
 
-                        delay(4000)
-                        withContext(Dispatchers.Main) {
-                            syncStatus = SyncStatus.Listening(currentCode)
+                        coroutineScope.launch {
+                            delay(4000)
+                            withContext(Dispatchers.Main) {
+                                syncStatus = SyncStatus.Listening(currentCode)
+                            }
                         }
                     } catch (ex: Exception) {
                         withContext(Dispatchers.Main) {
