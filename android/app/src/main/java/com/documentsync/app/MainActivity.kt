@@ -252,9 +252,10 @@ fun DocSyncApp() {
     var currentCode by remember { mutableStateOf(generate6DigitCode()) }
     var syncStatus by remember { mutableStateOf<SyncStatus>(SyncStatus.Disconnected) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var listenerRestartTrigger by remember { mutableStateOf(0) }
 
     // THE FIXED LISTENER BLOCK
-    LaunchedEffect(currentCode, sessionStatus) {
+    LaunchedEffect(currentCode, sessionStatus, listenerRestartTrigger) {
         if (sessionStatus !is SessionStatus.Authenticated) {
             syncStatus = SyncStatus.Disconnected
             return@LaunchedEffect
@@ -426,6 +427,38 @@ fun DocSyncApp() {
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            listenerRestartTrigger++
+
+                            val networkConstraints = Constraints.Builder()
+                                .setRequiredNetworkType(NetworkType.CONNECTED)
+                                .build()
+
+                            val syncRequest = OneTimeWorkRequestBuilder<OfflineSyncWorker>()
+                                .setConstraints(networkConstraints)
+                                .build()
+
+                            WorkManager.getInstance(context).enqueueUniqueWork(
+                                "DocSyncQueue",
+                                ExistingWorkPolicy.REPLACE,
+                                syncRequest
+                            )
+
+                            Toast.makeText(context, "Reconnecting & checking missed files...", Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.05f))
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh Connection",
+                            tint = Color(0xFFC7D2FE)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     if (sessionStatus is SessionStatus.Authenticated) {
                         IconButton(
                             onClick = {

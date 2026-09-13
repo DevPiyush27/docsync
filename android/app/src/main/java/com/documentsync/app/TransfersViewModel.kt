@@ -22,6 +22,9 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
 
     private val _notifiedDownloadIds = MutableStateFlow<Set<Long>>(emptySet())
 
+    // 1. The memory bank for deleted/hidden files
+    private val _dismissedDownloadIds = MutableStateFlow<Set<Long>>(emptySet())
+
     private val _activeNotification = MutableStateFlow<String?>(null)
     val activeNotification: StateFlow<String?> = _activeNotification.asStateFlow()
 
@@ -33,6 +36,16 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
 
     private var observerJob: Job? = null
 
+    // Globally accessible prefs for this ViewModel
+    private val prefs = application.getSharedPreferences("DocSyncPrefs", Context.MODE_PRIVATE)
+
+    init {
+        // Load the permanent list of deleted files the moment the app starts
+        val savedDismissedIds = prefs.getStringSet("dismissed_ids", emptySet())
+            ?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet()
+        _dismissedDownloadIds.value = savedDismissedIds
+    }
+
     @SuppressLint("Range")
     fun startDownloadObserver(context: Context) {
         if (observerJob?.isActive == true) return
@@ -41,10 +54,8 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
             val downloadManager = context.applicationContext.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
             if (downloadManager == null) return@launch
 
-            val prefs = context.applicationContext.getSharedPreferences("DocSyncPrefs", Context.MODE_PRIVATE)
             val isInitialized = prefs.getBoolean("is_initialized", false)
 
-            // 1. ONLY pre-load on the very first app launch to prevent historical spam
             if (!isInitialized) {
                 try {
                     downloadManager.query(DownloadManager.Query().setFilterByStatus(DownloadManager.STATUS_SUCCESSFUL))?.use { cursor ->
@@ -61,7 +72,6 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
                     }
                 } catch (e: Exception) { Log.e("TransfersVM", "Pre-load error", e) }
             } else {
-                // 2. Load the permanent memory of already-notified IDs
                 val savedIds = prefs.getStringSet("notified_ids", emptySet())
                     ?.mapNotNull { it.toLongOrNull() }?.toSet() ?: emptySet()
                 _notifiedDownloadIds.value = savedIds
@@ -84,6 +94,10 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
 
                         while (cursor.moveToNext()) {
                             val downloadId = if (idIndex != -1) cursor.getLong(idIndex) else continue
+
+                            // 2. BOUNCER CHECK: If the file was dismissed, skip it!
+                            if (_dismissedDownloadIds.value.contains(downloadId)) continue
+
                             val rawTitle = if (titleIndex != -1) cursor.getString(titleIndex) else null
                             val rawLocalUri = if (localUriIndex != -1) cursor.getString(localUriIndex) else null
 
@@ -104,13 +118,10 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
                                 )
                             )
 
-                            // 3. Trigger Snackbar AND save to SharedPreferences permanently
                             if (!_notifiedDownloadIds.value.contains(downloadId)) {
                                 val newSet = _notifiedDownloadIds.value + downloadId
                                 _notifiedDownloadIds.value = newSet
-
                                 prefs.edit().putStringSet("notified_ids", newSet.map { it.toString() }.toSet()).apply()
-
                                 _activeNotification.value = "File $fileTitle downloaded successfully"
                             }
                         }
@@ -136,6 +147,20 @@ class TransfersViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     fun removeTransfer(downloadId: Long) {
+        // 1. Add to the permanent blocklist so it never shows in the UI again
+        val updatedDismissed = _dismissedDownloadIds.value + downloadId
+        _dismissedDownloadIds.value = updatedDismissed
+        prefs.edit().putStringSet("dismissed_ids", updatedDismissed.map { it.toString() }.toSet()).apply()
+
+        // 2. Obliterate it from Android's internal Ghost DB
+        try {
+            val downloadManager = getApplication<Application>().getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadManager.remove(downloadId)
+        } catch (e: Exception) {
+            Log.e("TransfersVM", "Failed to clear ghost record from system", e)
+        }
+
+        // 3. Erase from the screen instantly
         _recentTransfers.update { current -> current.filterNot { it.downloadId == downloadId } }
         _uiState.update { current -> current.copy(transfers = _recentTransfers.value) }
     }

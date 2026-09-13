@@ -9,9 +9,11 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +40,9 @@ import androidx.compose.material.icons.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -49,11 +54,14 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -124,6 +132,7 @@ fun RecentTransfersScreen(
 ) {
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
+    var transferToConfirmDelete by remember { mutableStateOf<Long?>(null) }
 
     // 1. Observe the notification state safely
     val activeNotification by viewModel.activeNotification.collectAsStateWithLifecycle()
@@ -228,12 +237,23 @@ fun RecentTransfersScreen(
                         TransferItemCard(
                             transfer = transfer,
                             onClick = { openDownloadedFile(context, transfer) },
-                            onDismiss = { viewModel.removeTransfer(transfer.downloadId) }
+                            onDismiss = { transferToConfirmDelete = transfer.downloadId }
                         )
                     }
                 }
             }
         }
+    }
+
+    if (transferToConfirmDelete != null) {
+        AlertDialog(
+            onDismissRequest = { transferToConfirmDelete = null },
+            containerColor = Color(0xFF0F172A),
+            title = { Text("Delete File", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete this file from your device?", color = Color(0xFF94A3B8)) },
+            confirmButton = { Button(onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Yes, delete", color = Color.White) } },
+            dismissButton = { TextButton(onClick = { transferToConfirmDelete = null }) { Text("Cancel", color = Color(0xFF94A3B8)) } }
+        )
     }
 }
 
@@ -247,6 +267,7 @@ fun RecentTransfersSection(
     onShowSnackbar: (suspend (message: String) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    var transferToConfirmDelete by remember { mutableStateOf<Long?>(null) }
 
     // Observe the notification state safely
     val activeNotification by viewModel.activeNotification.collectAsStateWithLifecycle()
@@ -310,17 +331,29 @@ fun RecentTransfersSection(
                     TransferItemCard(
                         transfer = transfer,
                         onClick = { openDownloadedFile(context, transfer) },
-                        onDismiss = { viewModel.removeTransfer(transfer.downloadId) }
+                        onDismiss = { transferToConfirmDelete = transfer.downloadId }
                     )
                 }
             }
         }
+    }
+
+    if (transferToConfirmDelete != null) {
+        AlertDialog(
+            onDismissRequest = { transferToConfirmDelete = null },
+            containerColor = Color(0xFF0F172A),
+            title = { Text("Delete File", color = Color.White, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete this file from your device?", color = Color(0xFF94A3B8)) },
+            confirmButton = { Button(onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Yes, delete", color = Color.White) } },
+            dismissButton = { TextButton(onClick = { transferToConfirmDelete = null }) { Text("Cancel", color = Color(0xFF94A3B8)) } }
+        )
     }
 }
 
 /**
  * Card representing a completed transfer item.
  */
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TransferItemCard(
     transfer: CompletedTransfer,
@@ -328,6 +361,7 @@ fun TransferItemCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     val formattedTime = remember(transfer.timestamp) {
         SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date(transfer.timestamp))
     }
@@ -352,7 +386,10 @@ fun TransferItemCard(
         modifier = modifier
             .fillMaxWidth()
             .border(1.dp, cardBorder, RoundedCornerShape(18.dp))
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onDoubleClick = onClick,
+                onClick = { Toast.makeText(context, "Double-tap to open file", Toast.LENGTH_SHORT).show() }
+            ),
         shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A).copy(alpha = 0.85f))
     ) {
