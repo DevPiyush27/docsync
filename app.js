@@ -1,7 +1,7 @@
 /**
  * ==============================================================================
  * DocSync — Web Application Controller (Supabase JS v2)
- * Theme: Deep Midnight Blue / Indigo & Violet Glow + Supabase Auth
+ * Original Network Core + New Sliding Auth UI Integration
  * ==============================================================================
  */
 
@@ -18,15 +18,13 @@ const TABLE_NAME = "sync_sessions";
 // State
 let supabaseClient = null;
 let currentUser = null;
-let authMode = "login"; // "login" or "signup"
 let selectedFile = null;
 let isUploading = false;
-let isAuthenticating = false;
-let dragCounter = 0;
+let dragCounter = 0;  
 
 // DOM Elements — Main Card & Transfer
-const transferCard = document.getElementById("transfer-card");
 const infoGrid = document.getElementById("info-grid");
+const transferCard = document.getElementById("transfer-card");
 const syncForm = document.getElementById("sync-form");
 const codeInput = document.getElementById("code-input");
 const codeStatus = document.getElementById("code-status");
@@ -36,7 +34,6 @@ const dropZoneEmpty = document.getElementById("drop-zone-empty");
 const filePreview = document.getElementById("file-preview");
 const fileNameEl = document.getElementById("file-name");
 const fileSizeEl = document.getElementById("file-size");
-const fileTypeIconEl = document.getElementById("file-type-icon");
 const removeFileBtn = document.getElementById("remove-file-btn");
 const submitBtn = document.getElementById("submit-btn");
 const btnSpinner = document.getElementById("btn-spinner");
@@ -46,35 +43,55 @@ const progressStatus = document.getElementById("progress-status");
 const progressPercent = document.getElementById("progress-percent");
 const statusBanner = document.getElementById("status-banner");
 const bannerMessage = document.getElementById("banner-message");
-const bannerIcon = document.getElementById("banner-icon");
 
-// DOM Elements — Auth & User Controls
+// DOM Elements — Sliding Auth Card
 const authCard = document.getElementById("auth-card");
-const authForm = document.getElementById("auth-form");
-const tabLogin = document.getElementById("tab-login");
-const tabSignup = document.getElementById("tab-signup");
-const authEmailInput = document.getElementById("auth-email");
-const authPasswordInput = document.getElementById("auth-password");
-const authSubmitBtn = document.getElementById("auth-submit-btn");
-const authBtnText = document.getElementById("auth-btn-text");
-const authBtnSpinner = document.getElementById("auth-btn-spinner");
-const authBanner = document.getElementById("auth-banner");
-const authBannerMsg = document.getElementById("auth-banner-message");
-const authBannerIcon = document.getElementById("auth-banner-icon");
-const authTitle = document.getElementById("auth-title");
-const authSubtitle = document.getElementById("auth-subtitle");
+const containerEl = document.getElementById("container");
+const loginToggle = document.getElementById("login");
+const registerToggle = document.getElementById("register");
+
+const signinForm = document.getElementById("signin-form");
+const signinEmailInput = document.getElementById("signin-email");
+const signinPasswordInput = document.getElementById("signin-password");
+const signinSubmitBtn = document.getElementById("signin-submit-btn");
+const signinSpinner = document.getElementById("signin-spinner");
+const signinBanner = document.getElementById("signin-banner");
+const signinBannerMsg = document.getElementById("signin-banner-message");
+
+const signupForm = document.getElementById("signup-form");
+const signupEmailInput = document.getElementById("signup-email");
+const signupPasswordInput = document.getElementById("signup-password");
+const signupSubmitBtn = document.getElementById("signup-submit-btn");
+const signupSpinner = document.getElementById("signup-spinner");
+const signupBanner = document.getElementById("signup-banner");
+const signupBannerMsg = document.getElementById("signup-banner-message");
 
 const userControls = document.getElementById("user-controls");
 const userEmailText = document.getElementById("user-email-text");
 const logoutBtn = document.getElementById("logout-btn");
 
-// DOM Elements — Config Modal
+// DOM Elements — Config Modal & Theme
 const configBtn = document.getElementById("config-btn");
 const configModal = document.getElementById("config-modal");
 const closeModalBtn = document.getElementById("close-modal-btn");
 const cfgUrlInput = document.getElementById("cfg-url");
 const cfgKeyInput = document.getElementById("cfg-key");
 const saveConfigBtn = document.getElementById("save-config-btn");
+
+const themeToggleBtn = document.getElementById("theme-toggle-btn");
+const moonIcon = themeToggleBtn.querySelector(".moon-icon");
+const sunIcon = themeToggleBtn.querySelector(".sun-icon");
+
+/**
+ * Handle Sliding Authentication Panels
+ */
+registerToggle.addEventListener("click", () => {
+  containerEl.classList.add("active");
+});
+
+loginToggle.addEventListener("click", () => {
+  containerEl.classList.remove("active");
+});
 
 /**
  * Initialize Supabase Client & Setup Auth Listeners
@@ -99,21 +116,19 @@ async function initSupabase() {
           detectSessionInUrl: true,
         },
       });
-      console.log(
-        "Supabase client initialized successfully with session persistence.",
-      );
+      console.log("Supabase client initialized successfully.");
 
-      // Check current session
       const {
         data: { session },
         error: sessionError,
       } = await supabaseClient.auth.getSession();
+      
       if (sessionError) {
         console.warn("Session retrieval error:", sessionError);
       }
+      
       updateAuthUI(session?.user || null);
 
-      // Listen for auth state changes
       supabaseClient.auth.onAuthStateChange((event, session) => {
         console.log("Auth state change event:", event);
         updateAuthUI(session?.user || null);
@@ -133,153 +148,94 @@ function updateAuthUI(user) {
   currentUser = user;
 
   if (user) {
-    // Authenticated State
-    if (userEmailText)
-      userEmailText.textContent = user.email || "Authenticated User";
+    if (userEmailText) userEmailText.textContent = user.email || "Authenticated User";
     if (userControls) userControls.classList.remove("hidden");
     if (authCard) authCard.classList.add("hidden");
     if (transferCard) transferCard.classList.remove("hidden");
-    if (infoGrid) infoGrid.classList.remove("hidden");
-    hideAuthBanner();
+    if (infoGrid) infoGrid.classList.remove("hidden"); // <-- ADD THIS LINE HERE
   } else {
-    // Unauthenticated State
     if (userControls) userControls.classList.add("hidden");
     if (transferCard) transferCard.classList.add("hidden");
-    if (infoGrid) infoGrid.classList.add("hidden");
     if (authCard) authCard.classList.remove("hidden");
+    if (infoGrid) infoGrid.classList.add("hidden"); // <-- AND ADD THIS LINE HERE
   }
 }
 
-/**
- * Switch Auth Mode (Sign In vs Create Account)
- */
-function setAuthMode(mode) {
-  authMode = mode;
-  hideAuthBanner();
-
-  if (mode === "login") {
-    tabLogin.classList.add("active");
-    tabLogin.setAttribute("aria-selected", "true");
-    tabSignup.classList.remove("active");
-    tabSignup.setAttribute("aria-selected", "false");
-    authTitle.textContent = "Welcome back to DocSync";
-    authSubtitle.textContent =
-      "Sign in to access your secure device pairing and file transfer dashboard.";
-    authBtnText.textContent = "Sign In";
-  } else {
-    tabSignup.classList.add("active");
-    tabSignup.setAttribute("aria-selected", "true");
-    tabLogin.classList.remove("active");
-    tabLogin.setAttribute("aria-selected", "false");
-    authTitle.textContent = "Create your DocSync Account";
-    authSubtitle.textContent =
-      "Sign up with your email and password to begin transferring documents with Row-Level Security.";
-    authBtnText.textContent = "Create Account";
-  }
+function showFormBanner(bannerEl, msgEl, message, type = "error") {
+  bannerEl.className = `banner ${type}`;
+  msgEl.textContent = message;
+  bannerEl.classList.remove("hidden");
 }
 
-tabLogin.addEventListener("click", () => setAuthMode("login"));
-tabSignup.addEventListener("click", () => setAuthMode("signup"));
-
-/**
- * Show / Hide Auth Status Banner
- */
-function showAuthBanner(message, type = "error") {
-  authBanner.className = `banner ${type}`;
-  authBannerMsg.textContent = message;
-
-  if (authBannerIcon) {
-    authBannerIcon.innerHTML =
-      type === "success"
-        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
-        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
-  }
-
-  authBanner.classList.remove("hidden");
-}
-
-function hideAuthBanner() {
-  if (authBanner) authBanner.classList.add("hidden");
+function hideFormBanner(bannerEl) {
+  if (bannerEl) bannerEl.classList.add("hidden");
 }
 
 /**
- * Handle Auth Form Submission (Sign In / Sign Up)
+ * Handle Sign In Submission
  */
-authForm.addEventListener("submit", async (e) => {
+signinForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
   if (!supabaseClient) {
-    showAuthBanner(
-      "Supabase client is not configured. Click 'Config' in the header to set your project credentials.",
-      "error",
-    );
-    return;
-  }
-
-  const email = authEmailInput.value.trim();
-  const password = authPasswordInput.value;
-
-  if (!email || !password) {
-    showAuthBanner("Please provide both email and password.", "error");
-    return;
-  }
-
-  if (password.length < 6) {
-    showAuthBanner("Password must be at least 6 characters.", "error");
-    return;
+    return showFormBanner(signinBanner, signinBannerMsg, "Supabase client not configured.", "error");
   }
 
   try {
-    isAuthenticating = true;
-    authSubmitBtn.disabled = true;
-    authBtnSpinner.classList.remove("hidden");
-    authBtnText.classList.add("hidden");
-    hideAuthBanner();
+    signinSubmitBtn.disabled = true;
+    signinSpinner.classList.remove("hidden");
+    hideFormBanner(signinBanner);
 
-    if (authMode === "login") {
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: signinEmailInput.value.trim(),
+      password: signinPasswordInput.value,
+    });
 
-      if (error) throw error;
+    if (error) throw error;
+    
+    signinEmailInput.value = "";
+    signinPasswordInput.value = "";
+    updateAuthUI(data.user);
+  } catch (err) {
+    showFormBanner(signinBanner, signinBannerMsg, err.message || "Failed to authenticate.", "error");
+  } finally {
+    signinSubmitBtn.disabled = false;
+    signinSpinner.classList.add("hidden");
+  }
+});
 
-      showAuthBanner("Signed in successfully!", "success");
-      authEmailInput.value = "";
-      authPasswordInput.value = "";
-      updateAuthUI(data.user);
+/**
+ * Handle Sign Up Submission
+ */
+signupForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!supabaseClient) {
+    return showFormBanner(signupBanner, signupBannerMsg, "Supabase client not configured.", "error");
+  }
+
+  try {
+    signupSubmitBtn.disabled = true;
+    signupSpinner.classList.remove("hidden");
+    hideFormBanner(signupBanner);
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: signupEmailInput.value.trim(),
+      password: signupPasswordInput.value,
+    });
+
+    if (error) throw error;
+
+    if (data.user && !data.session) {
+      showFormBanner(signupBanner, signupBannerMsg, "Account created! Please check your email to confirm.", "success");
     } else {
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) throw error;
-
-      if (data.user && !data.session) {
-        // Email confirmation is required by Supabase project settings
-        showAuthBanner(
-          "Account created! Please check your email inbox to confirm your account.",
-          "success",
-        );
-      } else {
-        showAuthBanner("Account created and signed in!", "success");
-        authEmailInput.value = "";
-        authPasswordInput.value = "";
-        updateAuthUI(data.user);
-      }
+      signupEmailInput.value = "";
+      signupPasswordInput.value = "";
+      updateAuthUI(data.user);
     }
   } catch (err) {
-    console.error("Authentication error:", err);
-    showAuthBanner(
-      err.message || "Failed to authenticate. Please check your credentials.",
-      "error",
-    );
+    showFormBanner(signupBanner, signupBannerMsg, err.message || "Failed to create account.", "error");
   } finally {
-    isAuthenticating = false;
-    authSubmitBtn.disabled = false;
-    authBtnSpinner.classList.add("hidden");
-    authBtnText.classList.remove("hidden");
+    signupSubmitBtn.disabled = false;
+    signupSpinner.classList.add("hidden");
   }
 });
 
@@ -292,7 +248,6 @@ logoutBtn.addEventListener("click", async () => {
       await supabaseClient.auth.signOut();
     }
     updateAuthUI(null);
-    showAuthBanner("You have signed out successfully.", "success");
   } catch (err) {
     console.error("Sign out error:", err);
     updateAuthUI(null);
@@ -313,43 +268,23 @@ function formatBytes(bytes, decimals = 2) {
 
 /**
  * Uploads a file with real-time byte progress reporting via XMLHttpRequest.
- * @param {File} file - The file to upload
- * @param {string} storagePath - Target storage path in the bucket
- * @param {string} token - The user's Supabase auth session token
- * @returns {Promise<any>}
  */
 async function uploadWithRealProgress(file, storagePath, token) {
-  const currentUrl =
-    localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
-  const currentKey =
-    localStorage.getItem("docsync_supabase_key") || DEFAULT_SUPABASE_ANON_KEY;
+  const currentUrl = localStorage.getItem("docsync_supabase_url") || DEFAULT_SUPABASE_URL;
+  const currentKey = localStorage.getItem("docsync_supabase_key") || DEFAULT_SUPABASE_ANON_KEY;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open(
-      "POST",
-      `${currentUrl}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`
-    );
-
+    xhr.open("POST", `${currentUrl}/storage/v1/object/${STORAGE_BUCKET}/${storagePath}`);
     xhr.setRequestHeader("Authorization", `Bearer ${token}`);
     xhr.setRequestHeader("apikey", currentKey);
-    xhr.setRequestHeader(
-      "Content-Type",
-      file.type || "application/octet-stream"
-    );
+    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
     xhr.setRequestHeader("x-upsert", "true");
 
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         const percent = (e.loaded / e.total) * 100;
-        updateProgress(
-          percent,
-          "Uploading... (" +
-            formatBytes(e.loaded) +
-            " / " +
-            formatBytes(e.total) +
-            ")"
-        );
+        updateProgress(percent, "Uploading... (" + formatBytes(e.loaded) + " / " + formatBytes(e.total) + ")");
       }
     };
 
@@ -360,116 +295,20 @@ async function uploadWithRealProgress(file, storagePath, token) {
         let errorMessage = `Storage upload failed with status ${xhr.status}`;
         try {
           const parsed = JSON.parse(xhr.responseText);
-          if (parsed.message || parsed.error) {
-            errorMessage = parsed.message || parsed.error;
-          }
+          if (parsed.message || parsed.error) errorMessage = parsed.message || parsed.error;
         } catch (_) {}
         reject(new Error(errorMessage));
       }
     };
 
-    xhr.onerror = () => {
-      reject(new Error("Network error occurred during file upload."));
-    };
-
+    xhr.onerror = () => reject(new Error("Network error occurred during file upload."));
     xhr.send(file);
   });
 }
 
-/**
- * Return tailored SVG icon based on file extension
- */
-function getFileIconSvg(fileName) {
-  const ext = fileName.split(".").pop().toLowerCase();
-
-  // PDF
-  if (ext === "pdf") {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-            <polyline points="14 2 14 8 20 8"></polyline>
-            <line x1="9" y1="13" x2="15" y2="13"></line>
-            <line x1="9" y1="17" x2="13" y2="17"></line>
-        </svg>`;
-  }
-
-  // Images
-  if (["jpg", "jpeg", "png", "webp", "svg", "gif", "avif"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-            <circle cx="8.5" cy="8.5" r="1.5"></circle>
-            <polyline points="21 15 16 10 5 21"></polyline>
-        </svg>`;
-  }
-
-  // Videos
-  if (["mp4", "mkv", "mov", "webm", "avi"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="23 7 16 12 23 17 23 7"></polygon>
-            <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-        </svg>`;
-  }
-
-  // Audio
-  if (["mp3", "wav", "flac", "m4a", "ogg", "aac"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 18V5l12-2v13"></path>
-            <circle cx="6" cy="18" r="3"></circle>
-            <circle cx="18" cy="16" r="3"></circle>
-        </svg>`;
-  }
-
-  // Archives & Packages (ZIP, APK, TAR, RAR, 7Z)
-  if (["zip", "apk", "rar", "7z", "tar", "gz"].includes(ext)) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-        </svg>`;
-  }
-
-  // Code & Markup
-  if (
-    [
-      "html",
-      "css",
-      "js",
-      "ts",
-      "json",
-      "kt",
-      "py",
-      "cpp",
-      "java",
-      "sql",
-      "xml",
-    ].includes(ext)
-  ) {
-    return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 18 22 12 16 6"></polyline>
-            <polyline points="8 6 2 12 8 18"></polyline>
-        </svg>`;
-  }
-
-  // Default Document
-  return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-        <polyline points="14 2 14 8 20 8"></polyline>
-    </svg>`;
-}
-
-/**
- * Show / Hide Transfer Status Banner
- */
 function showBanner(message, type = "success") {
   statusBanner.className = `banner ${type}`;
   bannerMessage.textContent = message;
-
-  if (bannerIcon) {
-    bannerIcon.innerHTML =
-      type === "success"
-        ? `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`
-        : `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
-  }
-
   statusBanner.classList.remove("hidden");
 }
 
@@ -477,9 +316,6 @@ function hideBanner() {
   if (statusBanner) statusBanner.classList.add("hidden");
 }
 
-/**
- * Update Progress Bar
- */
 function updateProgress(percent, message) {
   progressSection.classList.remove("hidden");
   progressBar.style.width = `${percent}%`;
@@ -487,61 +323,35 @@ function updateProgress(percent, message) {
   if (message) progressStatus.textContent = message;
 }
 
-function hideProgress() {
-  progressSection.classList.add("hidden");
-  progressBar.style.width = "0%";
-  progressPercent.textContent = "0%";
-}
-
-/**
- * Handle File Selection & Validation
- */
 function handleFile(file) {
   hideBanner();
-
   if (!file) {
     selectedFile = null;
     dropZoneEmpty.classList.remove("hidden");
     filePreview.classList.add("hidden");
     return;
   }
-
-  // Validate size limit (50MB)
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    showBanner(
-      `File is too large (${formatBytes(file.size)}). Maximum allowed size is 50MB.`,
-      "error",
-    );
+    showBanner(`File is too large (${formatBytes(file.size)}). Maximum allowed size is 50MB.`, "error");
     fileInput.value = "";
     selectedFile = null;
-    dropZoneEmpty.classList.remove("hidden");
-    filePreview.classList.add("hidden");
     return;
   }
-
   selectedFile = file;
   fileNameEl.textContent = file.name;
   fileSizeEl.textContent = formatBytes(file.size);
-  if (fileTypeIconEl) {
-    fileTypeIconEl.innerHTML = getFileIconSvg(file.name);
-  }
   dropZoneEmpty.classList.add("hidden");
   filePreview.classList.remove("hidden");
 }
 
-/**
- * Event Listeners: 6-Digit Code Input
- */
 codeInput.addEventListener("input", (e) => {
   const cleaned = e.target.value.replace(/\D/g, "").slice(0, 6);
   e.target.value = cleaned;
-
   const count = cleaned.length;
   const digitCountEl = codeStatus.querySelector(".digit-count");
   if (digitCountEl) {
     digitCountEl.textContent = `${count}/6 digits`;
   }
-
   if (count === 6) {
     codeStatus.classList.add("valid");
     codeInput.style.borderColor = "var(--accent-emerald)";
@@ -551,9 +361,6 @@ codeInput.addEventListener("input", (e) => {
   }
 });
 
-/**
- * Event Listeners: Drag & Drop with Drag Counter Tracking
- */
 dropZone.addEventListener("dragenter", (e) => {
   e.preventDefault();
   e.stopPropagation();
@@ -584,17 +391,11 @@ dropZone.addEventListener("drop", (e) => {
   e.stopPropagation();
   dragCounter = 0;
   dropZone.classList.remove("dragover");
-
-  const dt = e.dataTransfer;
-  if (dt && dt.files && dt.files.length > 0) {
-    handleFile(dt.files[0]);
-  }
+  if (e.dataTransfer && e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
 });
 
 fileInput.addEventListener("change", (e) => {
-  if (e.target.files && e.target.files.length > 0) {
-    handleFile(e.target.files[0]);
-  }
+  if (e.target.files && e.target.files.length > 0) handleFile(e.target.files[0]);
 });
 
 removeFileBtn.addEventListener("click", (e) => {
@@ -604,41 +405,24 @@ removeFileBtn.addEventListener("click", (e) => {
   handleFile(null);
 });
 
-/**
- * Uploads a file, creates a temporary signed URL, and upserts the session into sync_sessions.
- * @param {Object} supabase - The Supabase client instance
- * @param {string} code - The 6-digit pairing code (session ID)
- * @param {File} file - The file to transfer
- * @param {string} userId - The authenticated user's ID
- * @returns {Promise<{ downloadUrl: string, filePath: string }>}
- */
 async function uploadAndBroadcastSyncSession(supabase, code, file, userId) {
   const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filePath = `sync_${code}_${Date.now()}_${cleanName}`;
-
-  // 1. Extract session token
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { data: { session } } = await supabase.auth.getSession();
   const token = session ? session.access_token : "";
 
-  // 2. Upload file to Supabase Storage bucket 'sync_uploads' with real byte progress
   await uploadWithRealProgress(file, filePath, token);
 
-  // 3. Generate temporary signed URL (valid for 60 seconds)
   const { data: signedData, error: signedError } = await supabase.storage
     .from(STORAGE_BUCKET)
     .createSignedUrl(filePath, 60);
 
   if (signedError || !signedData?.signedUrl) {
-    throw new Error(
-      `Failed to generate signed download URL: ${signedError?.message || "Unknown error"}`,
-    );
+    throw new Error(`Failed to generate signed download URL: ${signedError?.message || "Unknown error"}`);
   }
 
   const downloadUrl = signedData.signedUrl;
 
-  // 3. Upsert record into sync_sessions table using 6-digit code as primary key ID
   const { error: upsertError } = await supabase.from(TABLE_NAME).upsert([
     {
       id: code,
@@ -649,23 +433,14 @@ async function uploadAndBroadcastSyncSession(supabase, code, file, userId) {
     },
   ]);
 
-  if (upsertError) {
-    throw new Error(`Database upsert failed: ${upsertError.message}`);
-  }
+  if (upsertError) throw new Error(`Database upsert failed: ${upsertError.message}`);
 
   return { downloadUrl, filePath };
 }
 
-/**
- * Form Submission: Authenticated Upload to Supabase Storage & Upsert into sync_sessions
- */
 syncForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-
-  // Verify authenticated user
-  const {
-    data: { user },
-  } = await supabaseClient.auth.getUser();
+  const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) {
     showBanner("You must be logged in to transfer files.", "error");
     updateAuthUI(null);
@@ -693,108 +468,57 @@ syncForm.addEventListener("submit", async (e) => {
 
     updateProgress(0, "Starting secure upload...");
 
-    // Execute upload, signed URL generation, and upsert
-    await uploadAndBroadcastSyncSession(
-      supabaseClient,
-      code,
-      selectedFile,
-      user.id,
-    );
+    await uploadAndBroadcastSyncSession(supabaseClient, code, selectedFile, user.id);
 
-    // Complete
     updateProgress(100, "Transferred successfully!");
-    showBanner(
-      `🚀 "${selectedFile.name}" successfully synced to paired Android device (${code})!`,
-      "success",
-    );
-
-    // Reset file selection
+    showBanner(`🚀 "${selectedFile.name}" successfully synced to paired Android device (${code})!`, "success");
     fileInput.value = "";
     handleFile(null);
   } catch (err) {
     console.error("Transfer error:", err);
-    showBanner(
-      err.message || "An unexpected error occurred during transfer.",
-      "error",
-    );
+    showBanner(err.message || "An unexpected error occurred during transfer.", "error");
   } finally {
     isUploading = false;
     submitBtn.disabled = false;
     btnSpinner.classList.add("hidden");
     submitBtn.querySelector(".btn-text").classList.remove("hidden");
     setTimeout(() => {
-      if (!isUploading) {
-        progressSection.classList.add("hidden");
-      }
+      if (!isUploading) progressSection.classList.add("hidden");
     }, 3500);
   }
 });
+
 // ==============================================================================
 // DocSync — Offline Queue: "Send Later" Functionality
-// Bypasses 6-digit code pairing and routes metadata directly to 'sync_queue'
 // ==============================================================================
 
-/**
- * Uploads selected file to storage and creates a pending record in 'sync_queue'
- */
 async function uploadToOfflineQueue() {
   console.log("==================================================");
   console.log("🚀 [DocSync Queue] 'Send Later' clicked. Starting workflow...");
 
-  // 1. Verify a file is selected
   if (!selectedFile) {
-    console.warn("⚠️ [DocSync Queue] Aborted: No file selected.");
-    showBanner(
-      "Please select a document or file first to queue for offline sync.",
-      "error",
-    );
+    showBanner("Please select a document or file first to queue for offline sync.", "error");
     return;
   }
 
-  // Verify Supabase client is initialized
   if (!supabaseClient) {
-    console.error("❌ [DocSync Queue] Supabase client is not initialized.");
-    showBanner(
-      "Supabase client is not connected. Please check your config.",
-      "error",
-    );
+    showBanner("Supabase client is not connected. Please check your config.", "error");
     return;
   }
 
   const sendLaterBtn = document.getElementById("send-later-btn");
   const sendLaterSpinner = document.getElementById("send-later-spinner");
-  const sendLaterText = sendLaterBtn
-    ? sendLaterBtn.querySelector(".btn-text")
-    : null;
+  const sendLaterText = sendLaterBtn ? sendLaterBtn.querySelector(".btn-text") : null;
 
   try {
-    // 2. Check user authentication
-    console.log(
-      "🔍 [DocSync Queue] Step 1: Checking authenticated user session...",
-    );
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser();
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
-      console.error("❌ [DocSync Queue] User not authenticated:", authError);
-      showBanner(
-        "You must be logged in to queue files for offline sync.",
-        "error",
-      );
+      showBanner("You must be logged in to queue files for offline sync.", "error");
       updateAuthUI(null);
       return;
     }
 
-    console.log(
-      `✅ [DocSync Queue] Authenticated User ID: ${user.id} (${user.email || "No email"})`,
-    );
-    console.log(
-      `📄 [DocSync Queue] File details: "${selectedFile.name}" | Size: ${formatBytes(selectedFile.size)} (${selectedFile.size} bytes)`,
-    );
-
-    // Lock UI & Show Loading Spinners
     if (sendLaterBtn) sendLaterBtn.disabled = true;
     if (submitBtn) submitBtn.disabled = true;
     if (sendLaterSpinner) sendLaterSpinner.classList.remove("hidden");
@@ -803,28 +527,15 @@ async function uploadToOfflineQueue() {
 
     updateProgress(0, "Starting upload to storage bucket...");
 
-    // 3. Upload file to Supabase Storage bucket 'sync_uploads'
-    const sanitizedFileName = selectedFile.name.replace(
-      /[^a-zA-Z0-9._-]/g,
-      "_",
-    );
+    const sanitizedFileName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
     const storagePath = `queue/${user.id}/${Date.now()}_${sanitizedFileName}`;
 
-    console.log(
-      `📤 [DocSync Queue] Step 2: Uploading to bucket 'sync_uploads' at path: "${storagePath}"...`,
-    );
-
-    const {
-      data: { session },
-    } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await supabaseClient.auth.getSession();
     const token = session ? session.access_token : "";
 
     await uploadWithRealProgress(selectedFile, storagePath, token);
-
-    console.log("✅ [DocSync Queue] Storage upload successful!");
     updateProgress(65, "Registering entry in 'sync_queue' database table...");
 
-    // 4. STRICTLY insert record into 'sync_queue' table (NOT sync_sessions)
     const queuePayload = {
       user_id: user.id,
       file_name: selectedFile.name,
@@ -833,56 +544,24 @@ async function uploadToOfflineQueue() {
       status: "pending",
     };
 
-    console.log(
-      "📝 [DocSync Queue] Step 3: Inserting row into table: 'sync_queue'",
-    );
-    console.log(
-      "📦 [DocSync Queue] Insert Payload:",
-      JSON.stringify(queuePayload, null, 2),
-    );
-
     const { data: insertData, error: insertError } = await supabaseClient
       .from("sync_queue")
       .insert([queuePayload])
       .select();
 
     if (insertError) {
-      console.error(
-        "❌ [DocSync Queue] Database insert into 'sync_queue' failed:",
-        insertError,
-      );
-      // Cleanup orphaned file from storage bucket on DB failure
-      console.log("🧹 [DocSync Queue] Cleaning up orphaned file in storage...");
       await supabaseClient.storage.from("sync_uploads").remove([storagePath]);
       throw new Error(`Database error saving to queue: ${insertError.message}`);
     }
 
-    console.log(
-      "🎉 [DocSync Queue] Step 4: Successfully registered in 'sync_queue'!",
-      insertData,
-    );
-
-    // 5. Provide feedback and reset input
     updateProgress(100, "Queued successfully!");
-    showBanner(
-      `📦 "${selectedFile.name}" added to Offline Queue! Your Android device will automatically download it when connected.`,
-      "success",
-    );
-
-    // Reset file selection
-    if (fileInput) fileInput.value = "";
+    showBanner(`📦 "${selectedFile.name}" added to Offline Queue! Your Android device will automatically download it when connected.`, "success");
+    fileInput.value = "";
     handleFile(null);
   } catch (err) {
-    console.error(
-      "💥 [DocSync Queue] Fatal exception during queue operation:",
-      err,
-    );
-    showBanner(
-      err.message || "An unexpected error occurred while queueing.",
-      "error",
-    );
+    console.error("💥 [DocSync Queue] Fatal exception during queue operation:", err);
+    showBanner(err.message || "An unexpected error occurred while queueing.", "error");
   } finally {
-    // Restore button state
     if (sendLaterBtn) sendLaterBtn.disabled = false;
     if (submitBtn) submitBtn.disabled = false;
     if (sendLaterSpinner) sendLaterSpinner.classList.add("hidden");
@@ -892,50 +571,49 @@ async function uploadToOfflineQueue() {
     console.log("==================================================");
 
     setTimeout(() => {
-      if (!isUploading) {
-        progressSection.classList.add("hidden");
-      }
+      if (!isUploading) progressSection.classList.add("hidden");
     }, 3500);
   }
 }
 
-/**
- * Wire the click event to the Send Later button safely
- */
 function wireSendLaterButton() {
   const sendLaterBtn = document.getElementById("send-later-btn");
   if (sendLaterBtn) {
-    // Remove existing listener to prevent duplicate firings if re-run
     sendLaterBtn.removeEventListener("click", uploadToOfflineQueue);
     sendLaterBtn.addEventListener("click", uploadToOfflineQueue);
-    console.log(
-      "🔌 [DocSync] 'Send Later (Offline Queue)' button successfully wired to event listener.",
-    );
-  } else {
-    console.warn(
-      "⚠️ [DocSync] '#send-later-btn' not found in DOM when wiring listener.",
-    );
   }
 }
 
-// Attach listener immediately and on DOMContentLoaded as a fallback
 wireSendLaterButton();
 document.addEventListener("DOMContentLoaded", wireSendLaterButton);
+
 /**
- * Config Modal Event Listeners
+ * Theme Toggle & Config
  */
-configBtn.addEventListener("click", () => {
-  configModal.classList.remove("hidden");
-});
-
-closeModalBtn.addEventListener("click", () => {
-  configModal.classList.add("hidden");
-});
-
-configModal.addEventListener("click", (e) => {
-  if (e.target === configModal) {
-    configModal.classList.add("hidden");
+function setTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  localStorage.setItem("docsync_theme", theme);
+  if (theme === "dark") {
+    moonIcon.classList.add("hidden");
+    sunIcon.classList.remove("hidden");
+  } else {
+    sunIcon.classList.add("hidden");
+    moonIcon.classList.remove("hidden");
   }
+}
+
+const savedTheme = localStorage.getItem("docsync_theme") || "light";
+setTheme(savedTheme);
+
+themeToggleBtn.addEventListener("click", () => {
+  const currentTheme = document.documentElement.getAttribute("data-theme");
+  setTheme(currentTheme === "dark" ? "light" : "dark");
+});
+
+configBtn.addEventListener("click", () => configModal.classList.remove("hidden"));
+closeModalBtn.addEventListener("click", () => configModal.classList.add("hidden"));
+configModal.addEventListener("click", (e) => {
+  if (e.target === configModal) configModal.classList.add("hidden");
 });
 
 saveConfigBtn.addEventListener("click", () => {
@@ -955,7 +633,6 @@ saveConfigBtn.addEventListener("click", () => {
   showBanner("Supabase credentials updated successfully!", "success");
 });
 
-// Initialize on page load
 window.addEventListener("DOMContentLoaded", () => {
   initSupabase();
 });
