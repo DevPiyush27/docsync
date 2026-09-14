@@ -1,18 +1,19 @@
 package com.documentsync.app
 
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
+import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -52,11 +52,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -65,12 +63,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -81,19 +73,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Lifecycle-aware permission requester for Android 13+ (API 33+) POST_NOTIFICATIONS.
- */
 @Composable
 fun RequestNotificationPermissionEffect(
     onPermissionGranted: () -> Unit = {},
@@ -121,10 +106,6 @@ fun RequestNotificationPermissionEffect(
     }
 }
 
-/**
- * Main Composable demonstrating state-driven notifications,
- * StateFlow collection, and LazyColumn rendering.
- */
 @Composable
 fun RecentTransfersScreen(
     modifier: Modifier = Modifier,
@@ -134,32 +115,27 @@ fun RecentTransfersScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var transferToConfirmDelete by remember { mutableStateOf<Long?>(null) }
 
-    // 1. Observe the notification state safely
     val activeNotification by viewModel.activeNotification.collectAsStateWithLifecycle()
 
-    // 2. Invoke active Coroutine polling loop on app/screen start
     LaunchedEffect(Unit) {
         viewModel.startDownloadObserver(context)
     }
 
-    // 3. The Handshake: Display Snackbar, then clear the state
     LaunchedEffect(activeNotification) {
         activeNotification?.let { message ->
             snackbarHostState.showSnackbar(
                 message = message,
                 duration = SnackbarDuration.Short
             )
-            // Tell ViewModel we successfully showed it
             viewModel.clearNotification()
         }
     }
 
-    // 4. Collect StateFlow list of completed transfers
     val recentTransfers by viewModel.recentTransfers.collectAsStateWithLifecycle()
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = Color(0xFF060913),
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -175,7 +151,6 @@ fun RecentTransfersScreen(
         ) {
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Section Header
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -190,14 +165,14 @@ fun RecentTransfersScreen(
                     Icon(
                         imageVector = Icons.Default.DownloadDone,
                         contentDescription = null,
-                        tint = Color(0xFF6366F1),
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
                         text = "Recent Transfers",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFF8FAFC)
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -205,13 +180,12 @@ fun RecentTransfersScreen(
                     Text(
                         text = "${recentTransfers.size} completed",
                         fontSize = 12.sp,
-                        color = Color(0xFF94A3B8),
+                        color = MaterialTheme.colorScheme.secondary,
                         fontFamily = FontFamily.Monospace
                     )
                 }
             }
 
-            // Recent Transfers List or Empty State
             AnimatedVisibility(
                 visible = recentTransfers.isEmpty(),
                 enter = fadeIn(),
@@ -248,18 +222,26 @@ fun RecentTransfersScreen(
     if (transferToConfirmDelete != null) {
         AlertDialog(
             onDismissRequest = { transferToConfirmDelete = null },
-            containerColor = Color(0xFF0F172A),
-            title = { Text("Delete File", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete this file from your device?", color = Color(0xFF94A3B8)) },
-            confirmButton = { Button(onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Yes, delete", color = Color.White) } },
-            dismissButton = { TextButton(onClick = { transferToConfirmDelete = null }) { Text("Cancel", color = Color(0xFF94A3B8)) } }
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Delete File", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete this file from your device?", color = MaterialTheme.colorScheme.secondary) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) {
+                    Text("Yes, delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transferToConfirmDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.secondary)
+                }
+            }
         )
     }
 }
 
-/**
- * Modular Composable Section designed to drop directly into existing screens.
- */
 @Composable
 fun RecentTransfersSection(
     modifier: Modifier = Modifier,
@@ -269,15 +251,12 @@ fun RecentTransfersSection(
     val context = LocalContext.current
     var transferToConfirmDelete by remember { mutableStateOf<Long?>(null) }
 
-    // Observe the notification state safely
     val activeNotification by viewModel.activeNotification.collectAsStateWithLifecycle()
 
-    // 1. Invoke active Coroutine polling loop on start
     LaunchedEffect(Unit) {
         viewModel.startDownloadObserver(context)
     }
 
-    // 2. The Handshake for the section component
     LaunchedEffect(activeNotification) {
         activeNotification?.let { message ->
             if (onShowSnackbar != null) {
@@ -285,12 +264,10 @@ fun RecentTransfersSection(
             } else {
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             }
-            // Tell ViewModel we successfully showed it
             viewModel.clearNotification()
         }
     }
 
-    // 4. Reactive state collection
     val recentTransfers by viewModel.recentTransfers.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxWidth()) {
@@ -305,13 +282,13 @@ fun RecentTransfersSection(
                 text = "Recent Transfers",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFF8FAFC)
+                color = MaterialTheme.colorScheme.onSurface
             )
             if (recentTransfers.isNotEmpty()) {
                 Text(
                     text = "${recentTransfers.size} files",
                     fontSize = 12.sp,
-                    color = Color(0xFF94A3B8),
+                    color = MaterialTheme.colorScheme.secondary,
                     fontFamily = FontFamily.Monospace
                 )
             }
@@ -341,18 +318,26 @@ fun RecentTransfersSection(
     if (transferToConfirmDelete != null) {
         AlertDialog(
             onDismissRequest = { transferToConfirmDelete = null },
-            containerColor = Color(0xFF0F172A),
-            title = { Text("Delete File", color = Color.White, fontWeight = FontWeight.Bold) },
-            text = { Text("Are you sure you want to delete this file from your device?", color = Color(0xFF94A3B8)) },
-            confirmButton = { Button(onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null }, colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))) { Text("Yes, delete", color = Color.White) } },
-            dismissButton = { TextButton(onClick = { transferToConfirmDelete = null }) { Text("Cancel", color = Color(0xFF94A3B8)) } }
+            containerColor = MaterialTheme.colorScheme.surface,
+            title = { Text("Delete File", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold) },
+            text = { Text("Are you sure you want to delete this file from your device?", color = MaterialTheme.colorScheme.secondary) },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.removeTransfer(transferToConfirmDelete!!); transferToConfirmDelete = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) {
+                    Text("Yes, delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { transferToConfirmDelete = null }) {
+                    Text("Cancel", color = MaterialTheme.colorScheme.secondary)
+                }
+            }
         )
     }
 }
 
-/**
- * Card representing a completed transfer item.
- */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun TransferItemCard(
@@ -374,24 +359,16 @@ fun TransferItemCard(
         getTransferFileIcon(transfer.fileName)
     }
 
-    val cardBorder = Brush.linearGradient(
-        listOf(
-            Color(0xFF6366F1).copy(alpha = 0.5f),
-            Color(0xFF8B5CF6).copy(alpha = 0.3f),
-            Color(0xFFD946EF).copy(alpha = 0.15f)
-        )
-    )
-
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, cardBorder, RoundedCornerShape(18.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(18.dp))
             .combinedClickable(
                 onDoubleClick = onClick,
                 onClick = { Toast.makeText(context, "Double-tap to open file", Toast.LENGTH_SHORT).show() }
             ),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A).copy(alpha = 0.85f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
@@ -400,31 +377,26 @@ fun TransferItemCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Gradient Icon Box
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(
-                        Brush.linearGradient(
-                            listOf(Color(0xFF6366F1), Color(0xFF8B5CF6), Color(0xFFD946EF))
-                        )
-                    ),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = fileIcon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(22.dp)
                 )
             }
 
-            // File Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = transfer.fileName,
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
                     maxLines = 1,
@@ -443,25 +415,25 @@ fun TransferItemCard(
                     )
                     Text(
                         text = if (formattedSize.isNotBlank()) "$formattedSize • $formattedTime" else formattedTime,
-                        color = Color(0xFF94A3B8),
+                        color = MaterialTheme.colorScheme.secondary,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace
                     )
                 }
             }
 
-            // Dismiss Button
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.05f))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
             ) {
                 Icon(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Dismiss",
-                    tint = Color(0xFF94A3B8),
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(16.dp)
                 )
             }
@@ -469,17 +441,14 @@ fun TransferItemCard(
     }
 }
 
-/**
- * Placeholder when no files have completed downloading yet.
- */
 @Composable
 fun EmptyTransfersCard() {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, Color(0xFF25304C), RoundedCornerShape(20.dp)),
+            .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(20.dp)),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A).copy(alpha = 0.45f))
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier
@@ -492,26 +461,27 @@ fun EmptyTransfersCard() {
                 modifier = Modifier
                     .size(54.dp)
                     .clip(RoundedCornerShape(16.dp))
-                    .background(Color.White.copy(alpha = 0.05f)),
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(16.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Default.Folder,
                     contentDescription = null,
-                    tint = Color(0xFF94A3B8),
+                    tint = MaterialTheme.colorScheme.secondary,
                     modifier = Modifier.size(30.dp)
                 )
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "No transfers completed yet",
-                color = Color.White,
+                color = MaterialTheme.colorScheme.onSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = "Files downloaded via OfflineSyncWorker or DownloadManager will appear here automatically.",
-                color = Color(0xFF94A3B8),
+                color = MaterialTheme.colorScheme.secondary,
                 fontSize = 12.sp,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp)
@@ -520,9 +490,6 @@ fun EmptyTransfersCard() {
     }
 }
 
-/**
- * Helper to launch an intent to view/open the downloaded file.
- */
 fun openDownloadedFile(context: Context, transfer: CompletedTransfer) {
     val uri = transfer.fileUri ?: return
     val mime = transfer.mimeType ?: context.contentResolver.getType(uri) ?: "*/*"
@@ -540,9 +507,6 @@ fun openDownloadedFile(context: Context, transfer: CompletedTransfer) {
     }
 }
 
-/**
- * Formats byte size into human-readable format.
- */
 fun formatBytes(bytes: Long): String {
     if (bytes <= 0) return ""
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
@@ -552,9 +516,6 @@ fun formatBytes(bytes: Long): String {
     return String.format(Locale.getDefault(), "%.1f %s", size, units[groupIndex])
 }
 
-/**
- * Helper to select an appropriate vector icon according to file extension.
- */
 fun getTransferFileIcon(fileName: String): ImageVector {
     val ext = fileName.substringAfterLast('.', "").lowercase()
     return when (ext) {

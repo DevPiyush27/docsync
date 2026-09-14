@@ -78,6 +78,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -168,7 +169,7 @@ sealed interface SyncStatus {
 }
 
 // ==============================================================================
-// 2. Default Configuration Constants & Theme Colors
+// 2. Default Configuration Constants
 // ==============================================================================
 
 private val json = Json {
@@ -176,28 +177,6 @@ private val json = Json {
     isLenient = true
     coerceInputValues = true
 }
-
-// Colors
-val BgMain = Color(0xFF060913)
-val BgCard = Color(0xFF0F172A).copy(alpha = 0.78f)
-val PrimaryIndigo = Color(0xFF6366F1)
-val SecondaryViolet = Color(0xFF8B5CF6)
-val AccentPink = Color(0xFFD946EF)
-val SuccessEmerald = Color(0xFF10B981)
-val TextMuted = Color(0xFF94A3B8)
-val BorderSubtle = Color(0xFF25304C)
-
-val AccentGradient = Brush.linearGradient(
-    listOf(PrimaryIndigo, SecondaryViolet, AccentPink)
-)
-
-val CardBorderGradient = Brush.linearGradient(
-    listOf(
-        PrimaryIndigo.copy(alpha = 0.55f),
-        SecondaryViolet.copy(alpha = 0.35f),
-        AccentPink.copy(alpha = 0.15f)
-    )
-)
 
 // ==============================================================================
 // 3. Main Activity
@@ -224,12 +203,22 @@ class MainActivity : ComponentActivity() {
         )
 
         setContent {
-            DocSyncTheme {
+            val context = LocalContext.current
+            val prefs = remember { context.getSharedPreferences("docsync_prefs", Context.MODE_PRIVATE) }
+            var isDarkTheme by remember { mutableStateOf(prefs.getBoolean("is_dark_theme", true)) }
+
+            DocSyncTheme(isDarkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = BgMain
+                    color = MaterialTheme.colorScheme.background
                 ) {
-                    DocSyncApp()
+                    DocSyncApp(
+                        isDarkTheme = isDarkTheme,
+                        onThemeToggle = {
+                            isDarkTheme = !isDarkTheme
+                            prefs.edit().putBoolean("is_dark_theme", isDarkTheme).apply()
+                        }
+                    )
                 }
             }
         }
@@ -242,7 +231,7 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocSyncApp() {
+fun DocSyncApp(isDarkTheme: Boolean, onThemeToggle: () -> Unit) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -254,7 +243,6 @@ fun DocSyncApp() {
     var showSettingsDialog by remember { mutableStateOf(false) }
     var listenerRestartTrigger by remember { mutableStateOf(0) }
 
-    // THE FIXED LISTENER BLOCK
     LaunchedEffect(currentCode, sessionStatus, listenerRestartTrigger) {
         if (sessionStatus !is SessionStatus.Authenticated) {
             syncStatus = SyncStatus.Disconnected
@@ -320,7 +308,6 @@ fun DocSyncApp() {
                         }
 
                         try {
-                            // Extract path safely, removing extra slashes
                             val cleanPath = session.downloadUrl
                                 .substringAfter("sync_uploads/")
                                 .substringBefore("?")
@@ -341,7 +328,6 @@ fun DocSyncApp() {
                         } catch (e: Exception) {
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(context, "❌ Storage Error: ${e.message}", Toast.LENGTH_LONG).show()
-                                // Fallback just in case URL parsing failed but it was a direct link
                                 enqueueDownload(context, session.downloadUrl, fileName)
                             }
                         }
@@ -375,7 +361,7 @@ fun DocSyncApp() {
     }
 
     Scaffold(
-        containerColor = BgMain,
+        containerColor = MaterialTheme.colorScheme.background,
         snackbarHost = {
             SnackbarHost(
                 hostState = snackbarHostState,
@@ -393,13 +379,14 @@ fun DocSyncApp() {
                             modifier = Modifier
                                 .size(38.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(AccentGradient),
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Sync,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(22.dp)
                             )
                         }
@@ -409,19 +396,19 @@ fun DocSyncApp() {
                                     text = "Doc",
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 20.sp,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = "Sync",
                                     fontWeight = FontWeight.ExtraBold,
                                     fontSize = 20.sp,
-                                    color = PrimaryIndigo
+                                    color = MaterialTheme.colorScheme.secondary
                                 )
                             }
                             Text(
                                 text = if (currentUser != null) currentUser.email ?: "Authenticated Node" else "Secure P2P Sync",
                                 fontSize = 10.sp,
-                                color = TextMuted,
+                                color = MaterialTheme.colorScheme.secondary,
                                 fontWeight = FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -430,6 +417,16 @@ fun DocSyncApp() {
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = onThemeToggle,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Text(if (isDarkTheme) "☀️" else "🌙", fontSize = 16.sp)
+                    }
+                    Spacer(modifier = Modifier.width(6.dp))
+
                     IconButton(
                         onClick = {
                             listenerRestartTrigger++
@@ -452,12 +449,12 @@ fun DocSyncApp() {
                         },
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh Connection",
-                            tint = Color(0xFFC7D2FE)
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                     Spacer(modifier = Modifier.width(6.dp))
@@ -472,12 +469,12 @@ fun DocSyncApp() {
                             },
                             modifier = Modifier
                                 .clip(CircleShape)
-                                .background(Color.White.copy(alpha = 0.05f))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Logout,
                                 contentDescription = "Sign Out",
-                                tint = Color(0xFFFDA4AF)
+                                tint = MaterialTheme.colorScheme.error
                             )
                         }
                         Spacer(modifier = Modifier.width(6.dp))
@@ -487,17 +484,17 @@ fun DocSyncApp() {
                         onClick = { showSettingsDialog = true },
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.05f))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings",
-                            tint = Color(0xFFC7D2FE)
+                            tint = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = BgMain
+                    containerColor = MaterialTheme.colorScheme.background
                 )
             )
         }
@@ -515,7 +512,7 @@ fun DocSyncApp() {
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center
                     ) {
-                        CircularProgressIndicator(color = PrimaryIndigo)
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                     }
                 }
 
@@ -567,25 +564,25 @@ fun DocSyncApp() {
     if (showSettingsDialog) {
         AlertDialog(
             onDismissRequest = { showSettingsDialog = false },
-            containerColor = Color(0xFF0F172A),
+            containerColor = MaterialTheme.colorScheme.surface,
             shape = RoundedCornerShape(24.dp),
             title = {
-                Text("Supabase Configuration", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text("Supabase Configuration", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp)
             },
             text = {
                 Text(
                     text = "Supabase is currently configured globally via SupabaseHelper.kt. To change credentials, modify that file directly and rebuild the app.",
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.secondary,
                     fontSize = 14.sp
                 )
             },
             confirmButton = {
                 Button(
                     onClick = { showSettingsDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Got it", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Got it", fontWeight = FontWeight.Bold)
                 }
             }
         )
@@ -616,9 +613,9 @@ fun AuthCardScreen() {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .border(1.dp, CardBorderGradient, RoundedCornerShape(26.dp)),
+                .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(26.dp)),
             shape = RoundedCornerShape(26.dp),
-            colors = CardDefaults.cardColors(containerColor = BgCard)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier
@@ -629,15 +626,15 @@ fun AuthCardScreen() {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(PrimaryIndigo.copy(alpha = 0.15f))
-                        .border(1.dp, PrimaryIndigo.copy(alpha = 0.35f), RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "SECURE CLOUD SYNC",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFFA5B4FC),
+                        color = MaterialTheme.colorScheme.onSurface,
                         letterSpacing = 1.5.sp
                     )
                 }
@@ -648,13 +645,13 @@ fun AuthCardScreen() {
                     text = if (isLoginMode) "Welcome to DocSync" else "Create Account",
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Text(
                     text = if (isLoginMode) "Sign in to connect your device and receive files in real time." else "Sign up with your email to start syncing with Row-Level Security.",
                     fontSize = 12.sp,
-                    color = TextMuted,
+                    color = MaterialTheme.colorScheme.secondary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.padding(top = 4.dp, bottom = 18.dp)
                 )
@@ -663,8 +660,8 @@ fun AuthCardScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(14.dp))
-                        .background(BgMain)
-                        .border(1.dp, BorderSubtle, RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.background)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(14.dp))
                         .padding(4.dp),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -672,7 +669,7 @@ fun AuthCardScreen() {
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (isLoginMode) AccentGradient else SolidColor(Color.Transparent))
+                            .background(if (isLoginMode) MaterialTheme.colorScheme.outline else Color.Transparent)
                             .clickable {
                                 isLoginMode = true
                                 errorMessage = null
@@ -682,7 +679,7 @@ fun AuthCardScreen() {
                     ) {
                         Text(
                             text = "Sign In",
-                            color = if (isLoginMode) Color.White else TextMuted,
+                            color = if (isLoginMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -692,7 +689,7 @@ fun AuthCardScreen() {
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(if (!isLoginMode) AccentGradient else SolidColor(Color.Transparent))
+                            .background(if (!isLoginMode) MaterialTheme.colorScheme.outline else Color.Transparent)
                             .clickable {
                                 isLoginMode = false
                                 errorMessage = null
@@ -702,7 +699,7 @@ fun AuthCardScreen() {
                     ) {
                         Text(
                             text = "Sign Up",
-                            color = if (!isLoginMode) Color.White else TextMuted,
+                            color = if (!isLoginMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.secondary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -722,17 +719,18 @@ fun AuthCardScreen() {
                         Icon(
                             imageVector = Icons.Default.Email,
                             contentDescription = null,
-                            tint = PrimaryIndigo,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     },
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryIndigo,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = PrimaryIndigo,
-                        unfocusedLabelColor = TextMuted
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -752,7 +750,7 @@ fun AuthCardScreen() {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
-                            tint = PrimaryIndigo,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp)
                         )
                     },
@@ -761,18 +759,19 @@ fun AuthCardScreen() {
                             Icon(
                                 imageVector = if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
                                 contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                                tint = TextMuted
+                                tint = MaterialTheme.colorScheme.secondary
                             )
                         }
                     },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PrimaryIndigo,
-                        unfocusedBorderColor = BorderSubtle,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedLabelColor = PrimaryIndigo,
-                        unfocusedLabelColor = TextMuted
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.secondary,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     singleLine = true,
                     shape = RoundedCornerShape(14.dp),
@@ -785,13 +784,13 @@ fun AuthCardScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(Color(0xFF7F1D1D).copy(alpha = 0.3f))
-                            .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.errorContainer)
+                            .border(1.dp, MaterialTheme.colorScheme.error, RoundedCornerShape(12.dp))
                             .padding(12.dp)
                     ) {
                         Text(
                             text = errorMessage ?: "",
-                            color = Color(0xFFFCA5A5),
+                            color = MaterialTheme.colorScheme.onErrorContainer,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
                         )
@@ -843,20 +842,19 @@ fun AuthCardScreen() {
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryIndigo),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary),
                     shape = RoundedCornerShape(14.dp),
                     enabled = !isLoading
                 ) {
                     if (isLoading) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(20.dp),
                             strokeWidth = 2.dp
                         )
                     } else {
                         Text(
                             text = if (isLoginMode) "Sign In" else "Create Account",
-                            color = Color.White,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -882,11 +880,11 @@ fun PairingCodeCard(
             .fillMaxWidth()
             .border(
                 width = 1.dp,
-                brush = CardBorderGradient,
+                color = MaterialTheme.colorScheme.outline,
                 shape = RoundedCornerShape(26.dp)
             ),
         shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = BgCard)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier
@@ -897,15 +895,15 @@ fun PairingCodeCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(PrimaryIndigo.copy(alpha = 0.15f))
-                    .border(1.dp, PrimaryIndigo.copy(alpha = 0.35f), RoundedCornerShape(50))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(50))
                     .padding(horizontal = 10.dp, vertical = 4.dp)
             ) {
                 Text(
                     text = "DEVICE PAIRING CODE",
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFA5B4FC),
+                    color = MaterialTheme.colorScheme.onSurface,
                     letterSpacing = 1.5.sp
                 )
             }
@@ -921,12 +919,10 @@ fun PairingCodeCard(
                         modifier = Modifier
                             .size(width = 44.dp, height = 58.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(BgMain)
+                            .background(MaterialTheme.colorScheme.background)
                             .border(
                                 1.dp,
-                                Brush.verticalGradient(
-                                    listOf(PrimaryIndigo.copy(alpha = 0.6f), SecondaryViolet.copy(alpha = 0.25f))
-                                ),
+                                MaterialTheme.colorScheme.outline,
                                 RoundedCornerShape(14.dp)
                             ),
                         contentAlignment = Alignment.Center
@@ -936,7 +932,7 @@ fun PairingCodeCard(
                             fontSize = 30.sp,
                             fontWeight = FontWeight.ExtraBold,
                             fontFamily = FontFamily.Monospace,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -947,7 +943,7 @@ fun PairingCodeCard(
             Text(
                 text = "Enter this 6-digit code on the DocSync web portal to transfer documents directly to this device.",
                 fontSize = 12.sp,
-                color = TextMuted,
+                color = MaterialTheme.colorScheme.secondary,
                 textAlign = TextAlign.Center,
                 lineHeight = 16.sp
             )
@@ -961,37 +957,37 @@ fun PairingCodeCard(
                 Button(
                     onClick = onCopy,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.08f)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                    modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.ContentCopy,
                         contentDescription = "Copy",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Copy Code", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Copy Code", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Button(
                     onClick = onRegenerate,
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color.White.copy(alpha = 0.08f)
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
+                    modifier = Modifier.border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(12.dp))
                 ) {
                     Icon(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "New Code",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("New Code", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text("New Code", color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -1013,38 +1009,38 @@ fun ConnectionStatusBadge(status: SyncStatus) {
 
     val (bgColor, borderColor, textColor, dotColor, label) = when (status) {
         is SyncStatus.Disconnected -> StatusStyle(
-            Color(0xFF1E293B).copy(alpha = 0.6f),
-            Color(0xFF334155),
-            Color(0xFF94A3B8),
-            Color(0xFF64748B),
+            MaterialTheme.colorScheme.surface,
+            MaterialTheme.colorScheme.outline,
+            MaterialTheme.colorScheme.secondary,
+            MaterialTheme.colorScheme.secondary,
             "Disconnected"
         )
         is SyncStatus.Connecting -> StatusStyle(
-            Color(0xFF1E3A8A).copy(alpha = 0.25f),
-            PrimaryIndigo.copy(alpha = 0.6f),
-            Color(0xFFC7D2FE),
-            PrimaryIndigo,
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.outline,
+            MaterialTheme.colorScheme.onSurface,
+            MaterialTheme.colorScheme.onSurface,
             "Connecting to Realtime Channel..."
         )
         is SyncStatus.Listening -> StatusStyle(
-            SuccessEmerald.copy(alpha = 0.15f),
-            SuccessEmerald.copy(alpha = 0.5f),
-            Color(0xFF6EE7B7),
-            SuccessEmerald,
+            MaterialTheme.colorScheme.surface,
+            Color(0xFF10B981).copy(alpha = 0.5f),
+            MaterialTheme.colorScheme.onSurface,
+            Color(0xFF10B981),
             "Listening • Ready for code ${status.code}"
         )
         is SyncStatus.TransferReceived -> StatusStyle(
-            AccentPink.copy(alpha = 0.2f),
-            AccentPink.copy(alpha = 0.6f),
-            Color(0xFFFBCFE8),
-            AccentPink,
+            MaterialTheme.colorScheme.surfaceVariant,
+            MaterialTheme.colorScheme.onSurface,
+            MaterialTheme.colorScheme.onSurface,
+            MaterialTheme.colorScheme.onSurface,
             "Receiving: ${status.fileName}"
         )
         is SyncStatus.Error -> StatusStyle(
-            Color(0xFF7F1D1D).copy(alpha = 0.25f),
-            Color(0xFFEF4444).copy(alpha = 0.5f),
-            Color(0xFFFCA5A5),
-            Color(0xFFEF4444),
+            MaterialTheme.colorScheme.errorContainer,
+            MaterialTheme.colorScheme.error,
+            MaterialTheme.colorScheme.onErrorContainer,
+            MaterialTheme.colorScheme.error,
             status.message
         )
     }
@@ -1134,17 +1130,39 @@ private fun enqueueDownload(context: Context, downloadUrl: String, rawFileName: 
 // ==============================================================================
 
 @Composable
-fun DocSyncTheme(content: @Composable () -> Unit) {
+fun DocSyncTheme(isDarkTheme: Boolean = true, content: @Composable () -> Unit) {
     val darkScheme = darkColorScheme(
-        primary = PrimaryIndigo,
-        secondary = SecondaryViolet,
-        tertiary = AccentPink,
-        background = BgMain,
-        surface = BgCard
+        background = Color(0xFF000000),
+        surface = Color(0xFF121212),
+        surfaceVariant = Color(0xFF1A1A1A),
+        outline = Color(0xFF262626),
+        onSurface = Color.White,
+        onBackground = Color.White,
+        secondary = Color(0xFFA3A3A3),
+        primary = Color.White,
+        onPrimary = Color.Black,
+        errorContainer = Color(0xFF3F0000),
+        error = Color(0xFFEF4444),
+        onErrorContainer = Color(0xFFFCA5A5)
+    )
+
+    val lightScheme = lightColorScheme(
+        background = Color(0xFFF4F6F9),
+        surface = Color.White,
+        surfaceVariant = Color(0xFFF1F5F9),
+        outline = Color(0xFFE2E8F0),
+        onSurface = Color(0xFF1E293B),
+        onBackground = Color(0xFF1E293B),
+        secondary = Color(0xFF64748B),
+        primary = Color.Black,
+        onPrimary = Color.White,
+        errorContainer = Color(0xFFFEE2E2),
+        error = Color(0xFFEF4444),
+        onErrorContainer = Color(0xFF991B1B)
     )
 
     MaterialTheme(
-        colorScheme = darkScheme,
+        colorScheme = if (isDarkTheme) darkScheme else lightScheme,
         content = content
     )
 }
