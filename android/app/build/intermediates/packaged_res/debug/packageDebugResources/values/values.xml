@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="ic_launcher_background">#121212</color>
     <string name="app_name">DocSync</string>
     <style name="Theme.DocumentSync" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">#090D16</item>
